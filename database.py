@@ -22,7 +22,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         token TEXT UNIQUE NOT NULL,
         full_name TEXT NOT NULL,
-        email TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
         status TEXT DEFAULT 'in_progress', -- in_progress, submitted, reviewed
         started_at TEXT,
         submitted_at TEXT,

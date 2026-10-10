@@ -19,15 +19,32 @@ async function testMern() {
 
   // 2. Test MongoDB Candidate Model
   const testToken = 'cand-unit-test-' + Date.now();
+  const testEmail = 'unique-tester-' + Date.now() + '@gmail.com';
   const cand = await Candidate.create({
     fullName: 'Maria Rodriguez',
-    email: 'maria@qa.com',
+    email: testEmail,
     token: testToken
   });
   if (!cand._id || cand.fullName !== 'Maria Rodriguez') {
     throw new Error('Failed to create candidate document in MongoDB');
   }
   console.log(`✓ MongoDB Candidate created with ObjectId: ${cand._id}`);
+
+  // Test Unique Email/Gmail Constraint
+  try {
+    await Candidate.create({
+      fullName: 'Another Maria',
+      email: testEmail,
+      token: 'cand-duplicate-token'
+    });
+    throw new Error('FAILED: Duplicate email was allowed to register!');
+  } catch (err) {
+    if (err.message.includes('already exists')) {
+      console.log(`✓ Unique Email/Gmail Constraint verified: Duplicate registration rejected`);
+    } else {
+      throw err;
+    }
+  }
 
   // 3. Test Bug Report Model with Server Matching
   const sampleTitle = 'Cart allows negative items which gives discounts';

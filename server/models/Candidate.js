@@ -2,10 +2,18 @@ const { collections } = require('../db/mongo');
 
 class Candidate {
   static async create({ fullName, email, token }) {
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    
+    // Strict Unique Email Constraint
+    const existing = await collections.candidates.findOne({ email: normalizedEmail });
+    if (existing) {
+      throw new Error(`Candidate with email '${normalizedEmail}' already exists.`);
+    }
+
     return collections.candidates.create({
       token,
-      fullName,
-      email,
+      fullName: (fullName || '').trim(),
+      email: normalizedEmail,
       status: 'in_progress', // in_progress, submitted, reviewed
       startedAt: new Date().toISOString(),
       submittedAt: null,
@@ -13,6 +21,12 @@ class Candidate {
       reviewerDecision: 'Pending', // Pending, Pass, Strong Pass, Consider, Reject
       reviewerNotes: ''
     });
+  }
+
+  static async findByEmail(email) {
+    if (!email) return null;
+    const normalized = email.trim().toLowerCase();
+    return collections.candidates.findOne({ email: normalized });
   }
 
   static async findOne(query) {

@@ -630,17 +630,12 @@ function App() {
               })
               .then(res => res.json())
               .then(data => {
-                if (data.alreadySubmitted) {
+                if (!data.success) {
                   alert(
-                    `⚠️ Assessment Already Submitted!\n\n` +
-                    `Candidate: ${data.candidate.fullName} (${data.candidate.email})\n\n` +
-                    `You have already completed and finalized your QA testing assessment.\n` +
-                    `Submissions cannot be re-taken or modified.`
+                    `⚠️ Duplicate Registration Blocked:\n\n` +
+                    `${data.error || 'Each applicant must use a unique email address.'}`
                   );
-                  setCandidate(data.candidate);
-                  loadMyReports(data.candidate.token);
-                  setRoute('completed');
-                  showToast('You have already submitted this assessment.', 'error');
+                  showToast(data.error || 'This email is already in use.', 'error');
                   return;
                 }
 
@@ -648,12 +643,11 @@ function App() {
                   setCandidate(data.candidate);
                   loadMyReports(data.candidate.token);
                   setRoute('store');
-                  if (data.isResume) {
-                    showToast(`Welcome back, ${data.candidate.fullName}! Resumed your active session.`, 'success');
-                  } else {
-                    showToast('Assessment session initialized!', 'success');
-                  }
+                  showToast('Assessment session initialized!', 'success');
                 }
+              })
+              .catch(err => {
+                showToast('Network error during registration: ' + err.message, 'error');
               });
             },
             style: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 24 }

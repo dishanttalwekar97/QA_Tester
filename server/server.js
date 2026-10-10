@@ -170,38 +170,40 @@ const server = http.createServer(async (req, res) => {
 
   // --- REST API ENDPOINTS ---
 
-  // 1. Candidate Session Start & Unique Account Check: POST /api/candidate/start
+  // 1. Candidate Session Start & Strict Unique Email/Gmail Check: POST /api/candidate/start
   if (pathname === '/api/candidate/start' && method === 'POST') {
     const body = await parseJsonBody(req);
     const fullName = (body.fullName || '').trim() || 'Candidate';
-    const email = (body.email || '').trim().toLowerCase() || 'candidate@example.com';
+    const email = (body.email || '').trim().toLowerCase();
 
-    // Unique user check by email or username (case-insensitive)
-    const allCandidates = await Candidate.find({});
-    const normalizedEmail = email.toLowerCase();
-    const normalizedName = fullName.toLowerCase();
-    const existing = allCandidates.find(c => 
-      (c.email && c.email.toLowerCase() === normalizedEmail) ||
-      (c.fullName && c.fullName.toLowerCase() === normalizedName)
-    );
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      return sendJson(res, 400, {
+        success: false,
+        error: 'Please provide a valid email/Gmail address (e.g. yourname@gmail.com).'
+      });
+    }
+
+    // Strict Unique Email Constraint: Check if email/gmail is already registered
+    const existing = await Candidate.findByEmail(email);
 
     if (existing) {
-      // If already finalized or reviewed, notify that test is already submitted
       if (existing.status === 'submitted' || existing.status === 'reviewed') {
-        return sendJson(res, 200, {
+        return sendJson(res, 409, {
           success: false,
           alreadySubmitted: true,
-          message: 'You have already submitted this assessment. Submissions cannot be re-taken or re-entered.',
+          error: `The email address '${existing.email}' has already completed and submitted this assessment. Each candidate must use a unique email.`,
           token: existing.token,
           candidate: existing
         });
       }
 
-      // Resume active progress
-      return sendJson(res, 200, {
-        success: true,
-        isResume: true,
-        message: 'Active session found. Resuming your progress.',
+      // If in progress, block duplicate registration and inform the candidate
+      return sendJson(res, 409, {
+        success: false,
+        alreadyRegistered: true,
+        error: `The email address '${existing.email}' is already registered with an active assessment session. Each candidate must use a unique email.`,
         token: existing.token,
         candidate: existing
       });
@@ -209,7 +211,7 @@ const server = http.createServer(async (req, res) => {
 
     const token = 'cand-' + crypto.randomBytes(4).toString('hex');
     const candidate = await Candidate.create({ fullName, email, token });
-    return sendJson(res, 201, { success: true, isResume: false, token, candidate });
+    return sendJson(res, 201, { success: true, token, candidate });
   }
 
   // 2. Candidate Session Lookup: GET /api/candidate/session
