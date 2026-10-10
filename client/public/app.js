@@ -1311,25 +1311,155 @@ function App() {
         h('button', { className: 'btn btn-secondary btn-sm', onClick: () => setRoute('admin') }, '← Back to All Candidates')
       ),
 
-      h('div', { style: { background: 'white', padding: 24, borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 24 } },
-        h('h1', { style: { fontSize: '1.6rem', fontWeight: 800 } }, `Evaluation Sheet: ${d.candidate.fullName}`),
-        h('p', { style: { color: '#64748b' } }, `${d.candidate.email} • Session: ${d.candidate.token}`),
-        h('div', { style: { marginTop: 12, display: 'flex', gap: 24 } },
-          h('div', null, 'Discovered: ', h('strong', { style: { color: '#4338ca' } }, `${d.matchedCount} / 20 Seeded Bugs`)),
-          h('div', null, 'Suggested Baseline: ', h('strong', { style: { color: '#16a34a' } }, `${d.suggestedScore}%`))
+      h('div', { style: { background: 'white', padding: 24, borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 } },
+        h('div', null,
+          h('h1', { style: { fontSize: '1.6rem', fontWeight: 800, color: '#0f172a' } }, `Candidate Assessment: ${d.candidate.fullName}`),
+          h('p', { style: { color: '#64748b', fontSize: '0.9rem', marginTop: 4 } },
+            `${d.candidate.email} • Token: `,
+            h('code', { style: { background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, color: '#334155' } }, d.candidate.token)
+          )
+        ),
+        h('div', { style: { display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' } },
+          h('div', { style: { textAlign: 'right' } },
+            h('div', { style: { fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 } }, 'Total Issues Logged'),
+            h('div', { style: { fontSize: '1.6rem', fontWeight: 800, color: '#4338ca' } }, `${(d.reports || []).length} Reports`)
+          ),
+          h('div', { style: { textAlign: 'right' } },
+            h('div', { style: { fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 } }, 'Session Status'),
+            h('div', { style: { marginTop: 4 } },
+              h('span', { style: { background: d.candidate.status === 'submitted' || d.candidate.status === 'reviewed' ? '#dcfce7' : '#fef9c3', color: d.candidate.status === 'submitted' || d.candidate.status === 'reviewed' ? '#166534' : '#854d0e', padding: '4px 10px', borderRadius: 6, fontSize: '0.85rem', fontWeight: 700 } },
+                d.candidate.status === 'submitted' ? 'Submitted' : (d.candidate.status === 'reviewed' ? 'Graded' : 'In Progress')
+              )
+            )
+          )
         )
       ),
 
-      // 20-Bug Matrix
+      // Candidate Submitted Bug Reports Section
       h('div', { style: { background: 'white', padding: 24, borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 24 } },
-        h('h3', { style: { fontWeight: 700, marginBottom: 16 } }, '20 Seeded Bugs Coverage Matrix'),
-        h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 } },
-          d.seededBugs.map(b => {
-            const found = d.foundBugIds.includes(b.id);
+        h('div', { style: { marginBottom: 20 } },
+          h('h2', { style: { fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' } },
+            `Candidate Submitted Bug Reports (${(d.reports || []).length})`
+          ),
+          h('p', { style: { color: '#64748b', fontSize: '0.88rem', marginTop: 4 } },
+            'Review the candidate’s actual defect reports, reproduction steps, expected vs. actual outcomes, and testing methodology.'
+          )
+        ),
+
+        (!d.reports || d.reports.length === 0) ? (
+          h('div', { style: { textAlign: 'center', padding: '48px 20px', background: '#f8fafc', borderRadius: 10, border: '1px dashed #cbd5e1' } },
+            h('div', { style: { fontSize: '2.5rem', marginBottom: 12 } }, '📋'),
+            h('h4', { style: { fontWeight: 700, color: '#1e293b', fontSize: '1.1rem' } }, 'No Bug Reports Submitted'),
+            h('p', { style: { color: '#64748b', fontSize: '0.88rem', marginTop: 4 } }, 'This applicant has not logged any defect reports during their session.')
+          )
+        ) : (
+          h('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } },
+            d.reports.map((rep, idx) => {
+              const sev = (rep.severity || 'Medium').toLowerCase();
+              let sevBg = '#fef3c7', sevColor = '#92400e', sevBorder = '#fde68a';
+              if (sev === 'blocker') {
+                sevBg = '#fee2e2'; sevColor = '#991b1b'; sevBorder = '#fca5a5';
+              } else if (sev === 'major') {
+                sevBg = '#ffedd5'; sevColor = '#9a3412'; sevBorder = '#fdba74';
+              } else if (sev === 'minor') {
+                sevBg = '#f1f5f9'; sevColor = '#475569'; sevBorder = '#cbd5e1';
+              }
+
+              return h('div', {
+                key: rep._id || idx,
+                style: {
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
+                  padding: 20
+                }
+              },
+                // Report Header
+                h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 14, borderBottom: '1px solid #e2e8f0', paddingBottom: 12 } },
+                  h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
+                    h('span', { style: { background: '#4338ca', color: 'white', fontWeight: 800, fontSize: '0.8rem', padding: '3px 8px', borderRadius: 4 } },
+                      `Issue #${rep.reportNumber || (idx + 1)}`
+                    ),
+                    h('h3', { style: { fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 } },
+                      rep.title
+                    )
+                  ),
+                  h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } },
+                    h('span', { style: { background: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe', fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: 4 } },
+                      rep.category
+                    ),
+                    h('span', { style: { background: sevBg, color: sevColor, border: `1px solid ${sevBorder}`, fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: 4 } },
+                      rep.severity
+                    ),
+                    rep.matchedBugId ? (
+                      h('span', { style: { background: '#dcfce7', color: '#166534', border: '1px solid #86efac', fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: 4 } },
+                        `Matched ${rep.matchedBugId} (${rep.matchConfidence || 0}%)`
+                      )
+                    ) : (
+                      h('span', { style: { background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', fontSize: '0.75rem', fontWeight: 600, padding: '3px 8px', borderRadius: 4 } },
+                        'Exploratory / Unmatched'
+                      )
+                    )
+                  )
+                ),
+
+                // Steps to Reproduce
+                h('div', { style: { marginBottom: 14 } },
+                  h('div', { style: { fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: 6 } }, 'Steps to Reproduce:'),
+                  h('pre', {
+                    style: {
+                      background: 'white',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 8,
+                      padding: '12px 14px',
+                      fontSize: '0.88rem',
+                      fontFamily: 'inherit',
+                      whiteSpace: 'pre-wrap',
+                      margin: 0,
+                      color: '#1e293b',
+                      lineHeight: 1.5
+                    }
+                  }, rep.stepsToReproduce || 'None provided')
+                ),
+
+                // Expected vs Actual Result (Two Columns)
+                h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, marginBottom: 12 } },
+                  h('div', { style: { background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '12px 14px' } },
+                    h('div', { style: { color: '#166534', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 } }, '✓ Expected Behavior:'),
+                    h('div', { style: { fontSize: '0.88rem', color: '#14532d', lineHeight: 1.45 } }, rep.expectedResult || 'None specified')
+                  ),
+                  h('div', { style: { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 14px' } },
+                    h('div', { style: { color: '#991b1b', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 } }, '✗ Observed Defect / Actual Result:'),
+                    h('div', { style: { fontSize: '0.88rem', color: '#7f1d1d', lineHeight: 1.45 } }, rep.actualResult || 'None specified')
+                  )
+                ),
+
+                // Environment & Capture Metadata
+                rep.environmentInfo && h('div', { style: { fontSize: '0.8rem', color: '#64748b', marginTop: 10, borderTop: '1px dashed #e2e8f0', paddingTop: 8 } },
+                  h('span', { style: { fontWeight: 700 } }, 'Captured Environment: '),
+                  rep.environmentInfo
+                )
+              );
+            })
+          )
+        )
+      ),
+
+      // Collapsible Seeded Defect Master Catalog Reference
+      h('details', { style: { background: 'white', padding: '16px 20px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 24 } },
+        h('summary', { style: { cursor: 'pointer', fontWeight: 700, color: '#475569', fontSize: '0.95rem' } },
+          `🔍 Seeded Defect Answer Key Reference (Click to Expand - ${(d.foundBugIds || []).length} / 20 Matched)`
+        ),
+        h('p', { style: { fontSize: '0.85rem', color: '#64748b', margin: '10px 0 14px 0' } },
+          'Master list of all 20 seeded test defects for evaluator reference.'
+        ),
+        h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 } },
+          (d.seededBugs || []).map(b => {
+            const found = (d.foundBugIds || []).includes(b.id);
             return h('div', {
               key: b.id,
               style: {
-                padding: 12,
+                padding: 10,
                 borderRadius: 8,
                 border: '1px solid',
                 background: found ? '#f0fdf4' : '#f8fafc',
@@ -1337,12 +1467,12 @@ function App() {
                 color: found ? '#166534' : '#94a3b8'
               }
             },
-              h('div', { style: { display: 'flex', justifyContent: 'space-between', fontWeight: 700 } },
+              h('div', { style: { display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '0.8rem' } },
                 h('span', null, b.id),
                 h('span', null, found ? '✓ FOUND' : '✗ MISSED')
               ),
-              h('div', { style: { fontWeight: 600, fontSize: '0.85rem' } }, b.title),
-              h('div', { style: { fontSize: '0.75rem', marginTop: 4 } }, `${b.category} • ${b.severity}`)
+              h('div', { style: { fontWeight: 600, fontSize: '0.8rem', marginTop: 2 } }, b.title),
+              h('div', { style: { fontSize: '0.72rem', marginTop: 2 } }, `${b.category} • ${b.severity}`)
             );
           })
         )
