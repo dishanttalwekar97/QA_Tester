@@ -329,3 +329,28 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 | **65% – 84%** | **Pass** | **Mid QA**: Strong functional coverage (caught negative quantities, shipping discrepancies, max stock limits, and form validations). |
 | **40% – 64%** | **Consider** | **Junior QA**: Caught obvious visual and cosmetic defects (broken images, missing symbols, clear filter bugs) but missed subtle business logic edge cases. |
 | **< 40%** | **Reject** | Low exploratory initiative, poor reproduction steps clarity, or high false-positive rate. |
+
+---
+
+## 📋 Quick Reference: 20 Seeded Bugs (One-Liner Summary)
+
+* **BUG-001**: **Negative Quantity in Cart Reduces Order Total** — Entering negative quantities in the cart reduces the line item total, giving an unauthorized discount or negative bill.
+* **BUG-002**: **Infinite Coupon Code Stacking** — Repeatedly clicking "Apply" on promo code `SAVE20` compounds 20% discounts indefinitely without limit.
+* **BUG-003**: **Double-Clicking 'Place Order' Creates Duplicate Orders** — Checkout button lacks click debouncing or disabling, creating multiple orders on rapid clicks.
+* **BUG-004**: **Free Shipping Threshold Discrepancy** — Banner promises free shipping over $50, but cart calculation continues charging $10 shipping until subtotal exceeds $100.
+* **BUG-005**: **Zero Quantity Item Remains in Cart as Ghost Item** — Setting item quantity to 0 fails to remove the product, leaving a $0.00 ghost line item in the cart.
+* **BUG-006**: **In-Stock Badge vs Add-to-Cart Failure for Product #4** — Catalog displays "In Stock (12 left)" for headphones, but clicking "Add to Cart" triggers an "Out of stock" error toast.
+* **BUG-007**: **Name Field Rejects Apostrophes and Hyphens** — Checkout name validation regex rejects legitimate human names containing apostrophes or hyphens (e.g., *O'Connor*, *Mary-Jane*).
+* **BUG-008**: **Max Stock Limit Bypass via Manual Typing** — Manually typing a quantity into the cart input bypasses inventory limits, allowing orders exceeding available stock.
+* **BUG-009**: **Special Characters in Search Query Cause 500 Server Error** — Searching for special characters (`%`, `?`, `'`) triggers an unhandled 500 internal server error crash modal.
+* **BUG-010**: **Inverted Price Filter Range Accepted Without Error** — Setting Min Price higher than Max Price (e.g., $80 to $20) is accepted without validation, producing a blank catalog.
+* **BUG-011**: **Cart State Lost on Page Reload (F5)** — Cart contents reside strictly in volatile component state and are lost when the page is refreshed.
+* **BUG-012**: **Valid Future Expiry Date (12/30) Flagged as Expired** — Expiration date comparison logic misparses two-digit future years (e.g., December 2030) as already expired.
+* **BUG-013**: **Sticky Checkout Bar Overlaps Terms Checkbox on Mobile (<450px)** — On mobile viewports under 450px, the fixed bottom bar obstructs the terms checkbox and totals.
+* **BUG-014**: **Broken Image Asset for Product #6** — Product #6 ("Ultra-Slim Mechanical Keyboard") links to a non-existent image (`keyboard_broken.png`), returning 404 without a fallback.
+* **BUG-015**: **Missing Currency Symbol on Product Detail Page** — Product detail modal displays price as a bare float (e.g., `149.99`) missing the `$` currency symbol.
+* **BUG-016**: **'Clear All Filters' Fails to Uncheck Category Checkboxes** — Clicking "Clear All Filters" resets search text and prices but leaves category filter checkboxes selected.
+* **BUG-017**: **Terms Modal Cannot Be Closed with Escape Key & Missing ARIA Label** — Terms modal ignores the keyboard Escape key and its close button lacks an `aria-label` attribute.
+* **BUG-018**: **Unsanitized Review Submission Renders Raw HTML (XSS)** — Submitting user reviews with HTML tags (e.g., `<b>Great</b>`) renders unescaped HTML directly in the DOM.
+* **BUG-019**: **Browser Back Button After Order Re-Exposes Payment Form** — Clicking browser Back after order completion returns to the populated checkout form with card details exposed.
+* **BUG-020**: **Removing 2nd Item in Cart Accidentally Removes 1st Item** — In a multi-item cart, clicking "Remove" on the 2nd item deletes the 1st item instead due to an off-by-one array index defect.
