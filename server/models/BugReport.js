@@ -59,3 +59,4 @@ class BugReport {
 }
 
 module.exports = BugReport;
+

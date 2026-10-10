@@ -37,3 +37,4 @@ module.exports = {
   matchCandidateReport,
   SEEDED_BUGS
 };
+

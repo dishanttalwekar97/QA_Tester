@@ -152,3 +152,4 @@
   global.React = React;
   global.ReactDOM = ReactDOM;
 })(window);
+
