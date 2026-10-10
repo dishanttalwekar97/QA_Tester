@@ -277,8 +277,9 @@ function App() {
   const calculateTotals = () => {
     let subtotal = 0;
     cart.forEach(item => {
-      // BUG-001: allows negative line total
-      subtotal += item.price * item.quantity;
+      // Intentional QA Defect: Inverse math glitch - increasing quantity lowers the total price (divides price by qty)
+      const lineTotal = item.quantity > 1 ? (item.price / item.quantity) : (item.price * item.quantity);
+      subtotal += lineTotal;
     });
 
     // BUG-004: Banner claims Free Shipping over $50, but logic checks subtotal >= 100
@@ -363,7 +364,8 @@ function App() {
 
   // Filter Catalog
   const filteredProducts = products.filter(p => {
-    const matchSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    // Intentional QA Defect: Search does not work - search query is ignored and fails to filter catalog
+    const matchSearch = true;
     const matchCat = selectedCategories.length === 0 || selectedCategories.includes(p.category);
     
     const minVal = minPrice !== '' ? parseFloat(minPrice) : 0;
@@ -615,15 +617,16 @@ function App() {
         h('p', { style: { opacity: 0.85, marginTop: 8 } }, 'Explore noise-canceling audio, ergonomic workstations, and high-precision productivity accessories.')
       ),
 
-      // Search Bar
+      // Search Bar (Intentional Defect: Search input bar is disabled / frozen)
       h('form', { onSubmit: handleSearchSubmit, style: { display: 'flex', gap: 12, marginBottom: 28 } },
         h('input', {
           type: 'text',
           className: 'filter-input',
           placeholder: 'Search products by title (e.g. Earbuds, Mouse, Keyboard)...',
           value: searchQuery,
-          onChange: (e) => setSearchQuery(e.target.value),
-          style: { padding: '12px 16px', fontSize: '1rem', borderRadius: 10 }
+          disabled: true,
+          readOnly: true,
+          style: { padding: '12px 16px', fontSize: '1rem', borderRadius: 10, cursor: 'not-allowed', background: '#f8fafc' }
         }),
         h('button', { type: 'submit', className: 'btn btn-primary', style: { padding: '12px 24px' } }, 'Search')
       ),
@@ -806,8 +809,8 @@ function App() {
                     }),
                     h('div', { style: { fontSize: '0.75rem', color: '#64748b' } }, `Stock: ${item.stock}`)
                   ),
-                  // BUG-001: multiplies negative number
-                  h('td', { style: { fontWeight: 700 } }, `$${(item.price * item.quantity).toFixed(2)}`),
+                  // Intentional QA Defect: Inverse math glitch - increasing quantity lowers the total price (divides price by qty)
+                  h('td', { style: { fontWeight: 700 } }, `$${(item.quantity > 1 ? (item.price / item.quantity) : item.price * item.quantity).toFixed(2)}`),
                   h('td', null,
                     h('button', { className: 'btn btn-sm btn-danger', onClick: () => handleRemoveFromCart(idx) }, 'Remove')
                   )

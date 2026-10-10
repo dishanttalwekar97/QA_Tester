@@ -17,9 +17,9 @@
     </div>
   </div>
 
-  <!-- Search Bar -->
+  <!-- Search Bar (Intentional Defect: Search input bar is disabled / frozen) -->
   <div style="display: flex; gap: 12px; margin-bottom: 28px;" id="catalog-section">
-    <input type="text" id="search-input" class="filter-input" placeholder="Search products by title (e.g. Earbuds, Mouse, Keyboard)..." style="padding: 12px 16px; font-size: 1rem; border-radius: 10px;" />
+    <input type="text" id="search-input" class="filter-input" placeholder="Search products by title (e.g. Earbuds, Mouse, Keyboard)..." disabled readonly style="padding: 12px 16px; font-size: 1rem; border-radius: 10px; cursor: not-allowed; background: #f8fafc;" />
     <button id="search-btn" class="btn btn-primary" style="padding: 12px 24px;">Search</button>
   </div>
 

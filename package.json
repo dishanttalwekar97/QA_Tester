@@ -4,8 +4,8 @@
   "description": "MERN Stack QA Tester Hiring Assessment Platform with 20 Seeded Defects",
   "main": "server/server.js",
   "scripts": {
-    "start": "bin/node server/server.js",
-    "test": "bin/node test_mern.js"
+    "start": "node server/server.js",
+    "test": "node test_mern_inprocess.js"
   },
   "keywords": ["mern", "mongodb", "express", "react", "node", "qa-testing", "assessment"],
   "author": "Antigravity Team",

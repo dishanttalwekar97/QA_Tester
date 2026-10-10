@@ -133,8 +133,8 @@ function renderCartView() {
   let subtotal = 0;
 
   cart.forEach((item, idx) => {
-    // BUG-001: Line total allows negative result
-    const lineTotal = item.price * item.quantity;
+    // Intentional QA Defect: Inverse math glitch - increasing quantity lowers the total price (divides price by qty)
+    const lineTotal = item.quantity > 1 ? (item.price / item.quantity) : (item.price * item.quantity);
     subtotal += lineTotal;
 
     rowsHtml += `
@@ -289,7 +289,8 @@ function filterCatalog() {
     const cat = card.dataset.category;
     const price = parseFloat(card.dataset.price);
 
-    const matchQuery = !query || name.includes(query);
+    // Intentional QA Defect: Search does not work - search query is ignored and fails to filter catalog
+    const matchQuery = true;
     const matchCat = checkedBoxes.length === 0 || checkedBoxes.includes(cat);
     
     // BUG-010: If minVal > maxVal, condition (price >= minVal && price <= maxVal) yields empty results without helpful warning
