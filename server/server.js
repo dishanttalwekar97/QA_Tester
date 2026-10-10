@@ -170,15 +170,46 @@ const server = http.createServer(async (req, res) => {
 
   // --- REST API ENDPOINTS ---
 
-  // 1. Candidate Session Start: POST /api/candidate/start
+  // 1. Candidate Session Start & Unique Account Check: POST /api/candidate/start
   if (pathname === '/api/candidate/start' && method === 'POST') {
     const body = await parseJsonBody(req);
     const fullName = (body.fullName || '').trim() || 'Candidate';
-    const email = (body.email || '').trim() || 'candidate@example.com';
-    const token = 'cand-' + crypto.randomBytes(4).toString('hex');
+    const email = (body.email || '').trim().toLowerCase() || 'candidate@example.com';
 
+    // Unique user check by email or username (case-insensitive)
+    const allCandidates = await Candidate.find({});
+    const normalizedEmail = email.toLowerCase();
+    const normalizedName = fullName.toLowerCase();
+    const existing = allCandidates.find(c => 
+      (c.email && c.email.toLowerCase() === normalizedEmail) ||
+      (c.fullName && c.fullName.toLowerCase() === normalizedName)
+    );
+
+    if (existing) {
+      // If already finalized or reviewed, notify that test is already submitted
+      if (existing.status === 'submitted' || existing.status === 'reviewed') {
+        return sendJson(res, 200, {
+          success: false,
+          alreadySubmitted: true,
+          message: 'You have already submitted this assessment. Submissions cannot be re-taken or re-entered.',
+          token: existing.token,
+          candidate: existing
+        });
+      }
+
+      // Resume active progress
+      return sendJson(res, 200, {
+        success: true,
+        isResume: true,
+        message: 'Active session found. Resuming your progress.',
+        token: existing.token,
+        candidate: existing
+      });
+    }
+
+    const token = 'cand-' + crypto.randomBytes(4).toString('hex');
     const candidate = await Candidate.create({ fullName, email, token });
-    return sendJson(res, 201, { success: true, token, candidate });
+    return sendJson(res, 201, { success: true, isResume: false, token, candidate });
   }
 
   // 2. Candidate Session Lookup: GET /api/candidate/session

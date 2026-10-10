@@ -137,6 +137,16 @@ def application(environ, start_response):
         full_name = params.get("full_name", ["Candidate"])[0].strip()
         email = params.get("email", ["candidate@example.com"])[0].strip()
         
+        existing = database.get_candidate_by_email_or_name(email, full_name)
+        if existing:
+            token = existing["token"]
+            if existing.get("status") in ("submitted", "reviewed"):
+                start_response("303 See Other", [("Location", f"/candidate/completed?token={token}&already_submitted=1")])
+                return [b"Redirecting to completed..."]
+            else:
+                start_response("303 See Other", [("Location", f"/?token={token}&resumed=1")])
+                return [b"Redirecting to store..."]
+        
         import uuid
         token = "cand-" + uuid.uuid4().hex[:8]
         database.create_candidate(full_name, email, token)

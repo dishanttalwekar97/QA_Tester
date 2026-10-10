@@ -39,10 +39,15 @@ function App() {
     actual: ''
   });
 
-  // Admin States
+  // Admin & Evaluator Auth States
   const [adminCandidates, setAdminCandidates] = useState([]);
   const [selectedCandidateDetail, setSelectedCandidateDetail] = useState(null);
   const [adminGrading, setAdminGrading] = useState({ score: 0, decision: 'Pending', notes: '' });
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(
+    () => sessionStorage.getItem('evaluator_auth') === 'true'
+  );
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [adminAuthError, setAdminAuthError] = useState('');
 
   // Load Initial Session & Products
   useEffect(() => {
@@ -53,7 +58,9 @@ function App() {
 
     if (path.startsWith('/admin')) {
       setRoute('admin');
-      loadAdminCandidates();
+      if (sessionStorage.getItem('evaluator_auth') === 'true') {
+        loadAdminCandidates();
+      }
     } else if (token) {
       fetchCandidate(token);
     }
@@ -73,7 +80,12 @@ function App() {
       .then(data => {
         if (data.candidate) {
           setCandidate(data.candidate);
-          setRoute('store');
+          if (data.candidate.status === 'submitted' || data.candidate.status === 'reviewed') {
+            setRoute('completed');
+            showToast('This assessment has already been submitted.', 'info');
+          } else {
+            setRoute('store');
+          }
           loadMyReports(token);
         }
       })
@@ -123,6 +135,27 @@ function App() {
           setRoute('admin_detail');
         }
       });
+  };
+
+  const handleAdminLogin = (e) => {
+    if (e) e.preventDefault();
+    const pass = adminPasswordInput.trim();
+    if (pass === 'admin123' || pass === 'evaluator2026') {
+      setIsAdminAuthenticated(true);
+      sessionStorage.setItem('evaluator_auth', 'true');
+      setAdminAuthError('');
+      loadAdminCandidates();
+      showToast('Evaluator portal unlocked successfully.', 'success');
+    } else {
+      setAdminAuthError('Access Denied: Incorrect passcode. Please check your credentials.');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminAuthenticated(false);
+    sessionStorage.removeItem('evaluator_auth');
+    setRoute('store');
+    showToast('Evaluator portal locked.', 'info');
   };
 
   // --- STORE ACTIONS & SEEDED BUGS ---
@@ -184,7 +217,8 @@ function App() {
   };
 
   const handleApplyCoupon = (code) => {
-    if (code.trim().toUpperCase() === 'SAVE20') {
+    // Subtle QA Defect: Strictly case-sensitive and does not trim whitespace (rejects 'save20' or 'SAVE20 ')
+    if (code === 'SAVE20') {
       // BUG-002: Stacks infinite times on each click!
       setCouponRate(prev => prev + 0.20);
       showToast('Coupon SAVE20 applied! 20% discount deducted.', 'success');
@@ -374,8 +408,8 @@ function App() {
     return matchSearch && matchCat && matchPrice;
   });
 
-  // Total cart badge count
-  const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  // Subtle QA Defect: Header badge displays count of distinct line items (cart.length) instead of total units
+  const totalCartCount = cart.length;
 
   // --- RENDER SECTIONS ---
 
@@ -410,21 +444,38 @@ function App() {
         ),
         h('div', { className: 'nav-links' },
           h('button', {
-            onClick: () => setRoute('store'),
+            onClick: () => {
+              if (candidate && (candidate.status === 'submitted' || candidate.status === 'reviewed')) {
+                showToast('Assessment already submitted. You cannot re-enter the testing store.', 'error');
+                setRoute('completed');
+              } else {
+                setRoute('store');
+              }
+            },
             className: 'btn btn-secondary btn-sm',
             style: { background: 'none', border: 'none', color: '#475569', fontWeight: 600 }
           }, 'Catalog'),
           h('button', {
-            onClick: () => setRoute('cart'),
+            onClick: () => {
+              if (candidate && (candidate.status === 'submitted' || candidate.status === 'reviewed')) {
+                showToast('Assessment already submitted.', 'error');
+                setRoute('completed');
+              } else {
+                setRoute('cart');
+              }
+            },
             className: 'cart-btn'
           },
             h('span', null, '🛒 Cart'),
             h('span', { className: 'cart-badge' }, totalCartCount)
           ),
           h('button', {
-            onClick: () => { setRoute('admin'); loadAdminCandidates(); },
+            onClick: () => {
+              setRoute('admin');
+              if (isAdminAuthenticated) loadAdminCandidates();
+            },
             style: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.85rem', cursor: 'pointer' }
-          }, 'Evaluator Portal')
+          }, '🔒 Evaluator Portal')
         )
       )
     ),
@@ -522,6 +573,14 @@ function App() {
           )
         )
       )
+    ),
+
+    // Footer (Subtle QA Defect: Copyright year 2018 contradicts 'SPRING COLLECTION 2026' banner)
+    h('footer', { style: { borderTop: '1px solid #e2e8f0', background: '#f8fafc', padding: '24px 0', marginTop: 48, textAlign: 'center', color: '#64748b', fontSize: '0.85rem' } },
+      h('div', { className: 'container' },
+        h('p', null, '© 2018 ShopPulse, Inc. All rights reserved.'),
+        h('p', { style: { fontSize: '0.75rem', marginTop: 4, color: '#94a3b8' } }, 'ShopPulse Assessment Storefront v2.0.4')
+      )
     )
   );
 
@@ -538,13 +597,25 @@ function App() {
       h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: 36, marginBottom: 24, borderLeft: '6px solid #4f46e5' } },
         h('h2', { style: { fontSize: '1.35rem', fontWeight: 700, color: '#1e1b4b', marginBottom: 12 } }, 'Candidate Onboarding'),
         candidate ? (
-          h('div', { style: { background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 10, padding: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+          h('div', { style: { background: candidate.status === 'submitted' || candidate.status === 'reviewed' ? '#fef2f2' : '#eef2ff', border: '1px solid ' + (candidate.status === 'submitted' || candidate.status === 'reviewed' ? '#fecaca' : '#c7d2fe'), borderRadius: 10, padding: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
             h('div', null,
-              h('div', { style: { fontSize: '0.8rem', color: '#4338ca', textTransform: 'uppercase', fontWeight: 700 } }, 'Active Candidate Session'),
+              h('div', { style: { fontSize: '0.8rem', color: candidate.status === 'submitted' || candidate.status === 'reviewed' ? '#b91c1c' : '#4338ca', textTransform: 'uppercase', fontWeight: 700 } },
+                candidate.status === 'submitted' || candidate.status === 'reviewed' ? 'Submitted Candidate Session' : 'Active Candidate Session'
+              ),
               h('div', { style: { fontSize: '1.15rem', fontWeight: 800, color: '#1e1b4b' } }, `${candidate.fullName} (${candidate.email})`),
-              h('div', { style: { fontSize: '0.8rem', color: '#64748b', marginTop: 4 } }, `Session Token: ${candidate.token}`)
+              h('div', { style: { fontSize: '0.8rem', color: '#64748b', marginTop: 4 } }, `Status: ${candidate.status === 'submitted' || candidate.status === 'reviewed' ? 'Completed & Submitted' : 'In Progress'} • Token: ${candidate.token}`)
             ),
-            h('button', { className: 'btn btn-primary', onClick: () => setRoute('store') }, 'Enter Assessment Store ➔')
+            h('button', {
+              className: 'btn btn-primary',
+              style: candidate.status === 'submitted' || candidate.status === 'reviewed' ? { background: '#dc2626' } : {},
+              onClick: () => {
+                if (candidate.status === 'submitted' || candidate.status === 'reviewed') {
+                  setRoute('completed');
+                } else {
+                  setRoute('store');
+                }
+              }
+            }, candidate.status === 'submitted' || candidate.status === 'reviewed' ? 'View Submitted Debrief ➔' : 'Resume Assessment Store ➔')
           )
         ) : (
           h('form', {
@@ -559,10 +630,29 @@ function App() {
               })
               .then(res => res.json())
               .then(data => {
+                if (data.alreadySubmitted) {
+                  alert(
+                    `⚠️ Assessment Already Submitted!\n\n` +
+                    `Candidate: ${data.candidate.fullName} (${data.candidate.email})\n\n` +
+                    `You have already completed and finalized your QA testing assessment.\n` +
+                    `Submissions cannot be re-taken or modified.`
+                  );
+                  setCandidate(data.candidate);
+                  loadMyReports(data.candidate.token);
+                  setRoute('completed');
+                  showToast('You have already submitted this assessment.', 'error');
+                  return;
+                }
+
                 if (data.candidate) {
                   setCandidate(data.candidate);
+                  loadMyReports(data.candidate.token);
                   setRoute('store');
-                  showToast('Assessment session initialized!', 'success');
+                  if (data.isResume) {
+                    showToast(`Welcome back, ${data.candidate.fullName}! Resumed your active session.`, 'success');
+                  } else {
+                    showToast('Assessment session initialized!', 'success');
+                  }
                 }
               });
             },
@@ -635,8 +725,8 @@ function App() {
           h('div', { className: 'filter-card' },
             h('h3', { className: 'filter-title' }, 'Filter Products'),
             h('div', { className: 'filter-group' },
-              h('label', { className: 'filter-label' }, 'Categories'),
-              ['Audio', 'Accessories', 'Wearables', 'Video', 'Charging'].map(cat =>
+              // Subtle QA Defect: Typo 'Accesssories' (3 s's) causes 0 products to match
+              ['Audio', 'Accesssories', 'Wearables', 'Video', 'Charging'].map(cat =>
                 h('label', { key: cat, className: 'checkbox-item' },
                   h('input', {
                     type: 'checkbox',
@@ -1048,11 +1138,59 @@ function App() {
     );
   }
 
+  function renderAdminLoginView() {
+    return h('div', { className: 'container', style: { maxWidth: 480, margin: '60px auto' } },
+      h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: '40px 32px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.06)', textAlign: 'center' } },
+        h('div', { style: { width: 68, height: 68, background: '#eef2ff', color: '#4f46e5', borderRadius: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', marginBottom: 20 } }, '🔐'),
+        h('h2', { style: { fontSize: '1.55rem', fontWeight: 800, color: '#1e1b4b', marginBottom: 8 } }, 'Evaluator Portal Protected'),
+        h('p', { style: { color: '#64748b', fontSize: '0.9rem', marginBottom: 24, lineHeight: 1.5 } },
+          'Restricted area for exam reviewers. Enter the evaluator password to view candidate grading, master rubrics, and the 20-defect coverage matrix.'
+        ),
+        adminAuthError && h('div', { style: { background: '#fee2e2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '10px 14px', borderRadius: 8, fontSize: '0.85rem', marginBottom: 20, fontWeight: 600, textAlign: 'left' } },
+          `⚠️ ${adminAuthError}`
+        ),
+        h('form', { onSubmit: handleAdminLogin },
+          h('div', { style: { marginBottom: 18, textAlign: 'left' } },
+            h('label', { className: 'form-label', style: { fontWeight: 700, fontSize: '0.85rem', marginBottom: 6, display: 'block' } }, 'Evaluator Password'),
+            h('input', {
+              type: 'password',
+              className: 'form-control',
+              placeholder: 'Enter password...',
+              value: adminPasswordInput,
+              onChange: (e) => setAdminPasswordInput(e.target.value),
+              autoFocus: true,
+              style: { padding: '12px 14px', fontSize: '1rem', borderRadius: 8 }
+            })
+          ),
+          h('button', {
+            type: 'submit',
+            className: 'btn btn-primary btn-block',
+            style: { padding: 14, fontSize: '0.95rem', fontWeight: 700, borderRadius: 8 }
+          }, 'Unlock Evaluator Dashboard ➔'),
+          h('div', { style: { marginTop: 18 } },
+            h('button', {
+              type: 'button',
+              onClick: () => setRoute('store'),
+              style: { background: 'none', border: 'none', color: '#64748b', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }
+            }, '← Cancel and return to store')
+          )
+        )
+      )
+    );
+  }
+
   function renderAdminDashboard() {
+    if (!isAdminAuthenticated) {
+      return renderAdminLoginView();
+    }
+
     return h('div', { className: 'container' },
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 } },
         h('h1', { style: { fontSize: '1.8rem', fontWeight: 800 } }, 'Evaluator Dashboard (MERN)'),
-        h('button', { className: 'btn btn-secondary btn-sm', onClick: () => setRoute('store') }, 'Back to Store')
+        h('div', { style: { display: 'flex', gap: 10 } },
+          h('button', { className: 'btn btn-secondary btn-sm', onClick: () => setRoute('store') }, 'Back to Store'),
+          h('button', { className: 'btn btn-sm btn-danger', onClick: handleAdminLogout }, '🔒 Log Out')
+        )
       ),
 
       h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' } },
@@ -1094,6 +1232,9 @@ function App() {
   }
 
   function renderAdminCandidateDetail() {
+    if (!isAdminAuthenticated) {
+      return renderAdminLoginView();
+    }
     const d = selectedCandidateDetail;
     if (!d) return null;
 

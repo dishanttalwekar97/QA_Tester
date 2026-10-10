@@ -99,6 +99,17 @@ def get_candidate_by_id(candidate_id: int):
     conn.close()
     return dict(row) if row else None
 
+def get_candidate_by_email_or_name(email: str, full_name: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM candidates WHERE LOWER(email) = LOWER(?) OR LOWER(full_name) = LOWER(?) ORDER BY id DESC LIMIT 1",
+        (email.strip(), full_name.strip())
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def list_candidates():
     conn = get_connection()
     cursor = conn.cursor()

@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QA Hiring Reviewer Dashboard — Admin</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  <script>
+    if (sessionStorage.getItem('evaluator_auth') !== 'true') {
+      const pass = prompt('🔒 Evaluator Portal: Enter passcode to access candidate grading dashboard:');
+      if (pass === 'admin123' || pass === 'evaluator2026') {
+        sessionStorage.setItem('evaluator_auth', 'true');
+      } else {
+        alert('Access Denied: Incorrect passcode.');
+        window.location.href = '/';
+      }
+    }
+  </script>
   <style>
     .admin-header {
       background: #0f172a;
