@@ -14,4 +14,11 @@ echo " Candidate:    http://localhost:$PORT/ (or /brief)"
 echo " Evaluator:    http://localhost:$PORT/admin"
 echo "=========================================================="
 
-"$DIR/bin/node" "$DIR/server/server.js"
+if command -v node >/dev/null 2>&1; then
+  node "$DIR/server/server.js"
+elif [ -f "$DIR/bin/node" ]; then
+  "$DIR/bin/node" "$DIR/server/server.js"
+else
+  echo "Error: Node.js runtime not found."
+  exit 1
+fi
