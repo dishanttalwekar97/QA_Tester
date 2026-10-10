@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Hiring Reviewer Dashboard — Admin</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .admin-header {
+      background: #0f172a;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .metric-card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .metric-val {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #1e1b4b;
+      margin-top: 4px;
+    }
+    .table-container {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 24px;
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .admin-table th, .admin-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--gray-200);
+      font-size: 0.9rem;
+    }
+    .admin-table th {
+      background: var(--gray-50);
+      color: var(--gray-600);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+    .badge-decision {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .badge-pass { background: #dcfce7; color: #15803d; }
+    .badge-reject { background: #fee2e2; color: #b91c1c; }
+    .badge-consider { background: #fef3c7; color: #b45309; }
+    .badge-pending { background: #e2e8f0; color: #475569; }
+  </style>
+</head>
+<body style="background: #f8fafc;">
+
+  <div class="admin-header">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="background: #4f46e5; color: white; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold;">QA</div>
+      <span style="font-size: 1.2rem; font-weight: 700;">Hiring Evaluator Dashboard</span>
+    </div>
+    <div style="display: flex; gap: 16px; align-items: center;">
+      <a href="/brief" target="_blank" style="color: #cbd5e1; text-decoration: none; font-size: 0.85rem;">Candidate Onboarding Link ↗</a>
+      <a href="/" target="_blank" style="color: #cbd5e1; text-decoration: none; font-size: 0.85rem;">View Target Store ↗</a>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top: 32px;">
+    
+    <!-- Top Metrics Overview -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+      <div class="metric-card">
+        <span style="font-size: 0.8rem; font-weight: 600; color: var(--gray-600); text-transform: uppercase;">Total Applicants</span>
+        <span class="metric-val">{{ candidates|length }}</span>
+      </div>
+      <div class="metric-card">
+        <span style="font-size: 0.8rem; font-weight: 600; color: var(--gray-600); text-transform: uppercase;">Completed Submissions</span>
+        <span class="metric-val">{{ completed_count }}</span>
+      </div>
+      <div class="metric-card">
+        <span style="font-size: 0.8rem; font-weight: 600; color: var(--gray-600); text-transform: uppercase;">Seeded Bugs Catalog</span>
+        <span class="metric-val" style="color: #4f46e5;">20 Bugs</span>
+      </div>
+      <div class="metric-card">
+        <span style="font-size: 0.8rem; font-weight: 600; color: var(--gray-600); text-transform: uppercase;">Master Bug Points</span>
+        <span class="metric-val" style="color: #16a34a;">120 Pts</span>
+      </div>
+    </div>
+
+    <!-- Candidate Submissions Table -->
+    <div class="table-container">
+      <div style="padding: 18px 20px; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #0f172a;">Candidate Assessments</h3>
+        <span style="font-size: 0.85rem; color: #64748b;">Showing all candidates</span>
+      </div>
+
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Applicant Name</th>
+            <th>Email</th>
+            <th>Bugs Reported</th>
+            <th>Session Status</th>
+            <th>Score</th>
+            <th>Hiring Decision</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if candidates %}
+            {% for c in candidates %}
+            <tr>
+              <td>
+                <strong style="color: #1e293b;">{{ c.full_name }}</strong>
+                <div style="font-size: 0.75rem; color: #94a3b8;">Token: {{ c.token }}</div>
+              </td>
+              <td>{{ c.email }}</td>
+              <td>
+                <span style="font-weight: 700; color: #4338ca;">{{ c.report_count }} Issues</span>
+              </td>
+              <td>
+                {% if c.status == 'submitted' %}
+                  <span style="color: #15803d; font-weight: 600; font-size: 0.8rem;">✓ Submitted</span>
+                {% elif c.status == 'reviewed' %}
+                  <span style="color: #4338ca; font-weight: 600; font-size: 0.8rem;">★ Reviewed</span>
+                {% else %}
+                  <span style="color: #d97706; font-weight: 600; font-size: 0.8rem;">⏳ In Progress</span>
+                {% endif %}
+              </td>
+              <td>
+                <strong style="font-size: 1rem;">{{ "%.1f"|format(c.overall_score) }} / 100</strong>
+              </td>
+              <td>
+                {% if c.reviewer_decision == 'Pass' or c.reviewer_decision == 'Strong Pass' %}
+                  <span class="badge-decision badge-pass">{{ c.reviewer_decision }}</span>
+                {% elif c.reviewer_decision == 'Reject' %}
+                  <span class="badge-decision badge-reject">Reject</span>
+                {% elif c.reviewer_decision == 'Consider' %}
+                  <span class="badge-decision badge-consider">Consider</span>
+                {% else %}
+                  <span class="badge-decision badge-pending">Pending Review</span>
+                {% endif %}
+              </td>
+              <td>
+                <a href="/admin/candidate/{{ c.id }}" class="btn btn-primary btn-sm">Review & Grade ➔</a>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">
+                No candidates have taken the assessment yet. <a href="/brief" target="_blank" style="color: #4f46e5;">Start a test session here</a>.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Collapsible 20-Bug Master Ground-Truth Reference Table -->
+    <div class="table-container" style="margin-top: 36px;">
+      <div style="padding: 18px 20px; border-bottom: 1px solid var(--gray-200); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: #0f172a;">Master Ground-Truth Catalog (20 Seeded Bugs)</h3>
+          <p style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">Hidden from candidates — used exclusively for hiring evaluation.</p>
+        </div>
+        <span style="background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 12px; font-weight: 700; font-size: 0.8rem;">20 Verified Defects</span>
+      </div>
+
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th style="width: 10%;">ID</th>
+            <th style="width: 15%;">Category</th>
+            <th style="width: 12%;">Severity</th>
+            <th>Title & Description</th>
+            <th style="width: 10%;">Max Pts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in seeded_bugs %}
+          <tr>
+            <td><strong style="color: #4338ca;">{{ b.id }}</strong></td>
+            <td><span style="font-size: 0.8rem; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">{{ b.category }}</span></td>
+            <td>
+              {% if b.severity == 'Blocker' %}
+                <span style="color: #dc2626; font-weight: 700; font-size: 0.8rem;">Blocker</span>
+              {% elif b.severity == 'Major' %}
+                <span style="color: #ea580c; font-weight: 700; font-size: 0.8rem;">Major</span>
+              {% elif b.severity == 'Medium' %}
+                <span style="color: #d97706; font-weight: 600; font-size: 0.8rem;">Medium</span>
+              {% else %}
+                <span style="color: #2563eb; font-weight: 600; font-size: 0.8rem;">Minor</span>
+              {% endif %}
+            </td>
+            <td>
+              <strong style="color: #1e293b;">{{ b.title }}</strong>
+              <p style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">{{ b.description }}</p>
+            </td>
+            <td><strong>{{ b.points }} pts</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</body>
+</html>

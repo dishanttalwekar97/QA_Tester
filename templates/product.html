@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} — ShopPulse{% endblock %}
+
+{% block content %}
+<div class="container">
+  
+  <div style="margin-bottom: 20px;">
+    <a href="/?token={{ candidate.token if candidate else '' }}" style="color: #64748b; text-decoration: none; font-size: 0.9rem;">← Back to Catalog</a>
+  </div>
+
+  <div class="detail-layout">
+    
+    <!-- Image Box -->
+    <div class="detail-img-box">
+      <!-- BUG-014: If product #6, image is broken -->
+      <img src="{{ product.image }}" alt="{{ product.name }}" style="width:100%; height:100%; object-fit:cover;" />
+    </div>
+
+    <!-- Product Meta -->
+    <div>
+      <span style="background: #e0e7ff; color: #4338ca; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">{{ product.category }}</span>
+      
+      <h1 style="font-size: 2rem; font-weight: 800; color: #0f172a; margin: 12px 0 8px 0;">{{ product.name }}</h1>
+
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+        <span style="color: #f59e0b; font-weight: 700;">★ {{ product.rating }}</span>
+        <span style="color: #94a3b8;">•</span>
+        <span style="color: #64748b; font-size: 0.9rem;">{{ product.reviews_count }} Verified Reviews</span>
+      </div>
+
+      <!-- BUG-015: Missing currency symbol on detail page! Displays 149.99 instead of $149.99 -->
+      <div style="font-size: 2.2rem; font-weight: 800; color: #1e1b4b; margin-bottom: 16px;">
+        {{ "%.2f"|format(product.price) }}
+      </div>
+
+      <p style="color: #475569; line-height: 1.7; margin-bottom: 24px;">{{ product.description }}</p>
+
+      <div style="margin-bottom: 24px;">
+        <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 10px; color: #1e293b;">Key Highlights:</h4>
+        <ul style="padding-left: 20px; color: #475569; font-size: 0.9rem; line-height: 1.8;">
+          {% for f in product.features %}
+          <li>{{ f }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div style="display: flex; gap: 16px; align-items: center; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+        <button class="btn btn-primary" style="padding: 14px 28px; font-size: 1rem;" 
+                onclick="ShopPulse.addToCart({{ product.id }}, '{{ product.name }}', {{ product.price }}, {{ product.stock }})">
+          🛒 Add to Cart
+        </button>
+        <div style="font-size: 0.85rem; color: #64748b;">
+          {% if product.stock > 0 %}
+            <span style="color: #166534; font-weight: 600;">✓ In Stock</span> (Ships within 24h)
+          {% else %}
+            <span style="color: #dc2626; font-weight: 600;">⚠️ Currently Unavailable</span>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Product Reviews & BUG-018 trigger (Raw HTML injection) -->
+  <div class="review-box">
+    <h3 style="font-size: 1.3rem; font-weight: 700; color: #0f172a; margin-bottom: 20px;">Customer Reviews & Ratings</h3>
+
+    <!-- Submit Review Form -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; margin-bottom: 24px;">
+      <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 12px;">Leave a Verified Customer Review</h4>
+      <div style="display: grid; grid-template-columns: 200px 1fr; gap: 12px; margin-bottom: 12px;">
+        <input type="text" id="review-author" class="form-control" placeholder="Your Name" />
+        <input type="text" id="review-comment" class="form-control" placeholder="Share your experience with this item..." />
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="ShopPulse.submitReview({{ product.id }})">Post Review</button>
+    </div>
+
+    <!-- Existing Reviews List -->
+    <div id="reviews-list">
+      {% for rev in reviews %}
+      <div class="review-item">
+        <div style="font-weight: 600; font-size: 0.9rem;">{{ rev.author }} <span style="color: #f59e0b;">★★★★★</span></div>
+        <div style="color: #475569; font-size: 0.85rem; margin-top: 4px;">{{ rev.comment }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

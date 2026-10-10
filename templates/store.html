@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}ShopPulse — Premium Audio, Gear & Accessories{% endblock %}
+
+{% block content %}
+<div class="container">
+  
+  <!-- Hero Banner -->
+  <div style="background: linear-gradient(135deg, #1e1b4b, #312e81); color: white; padding: 36px 32px; border-radius: 16px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+    <div>
+      <span style="background: rgba(255,255,255,0.15); font-size: 0.8rem; font-weight: 600; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 10px;">SPRING COLLECTION 2026</span>
+      <h1 style="font-size: 2.2rem; font-weight: 800; line-height: 1.2;">Next-Gen Gear For Creators & Professionals</h1>
+      <p style="opacity: 0.85; margin-top: 8px; max-width: 600px;">Explore premium noise-canceling audio, ergonomic workstations, and high-precision productivity accessories.</p>
+    </div>
+    <div>
+      <a href="#catalog-section" class="btn btn-primary" style="background: white; color: #1e1b4b; font-weight: 700;">Browse Catalog ↓</a>
+    </div>
+  </div>
+
+  <!-- Search Bar -->
+  <div style="display: flex; gap: 12px; margin-bottom: 28px;" id="catalog-section">
+    <input type="text" id="search-input" class="filter-input" placeholder="Search products by title (e.g. Earbuds, Mouse, Keyboard)..." style="padding: 12px 16px; font-size: 1rem; border-radius: 10px;" />
+    <button id="search-btn" class="btn btn-primary" style="padding: 12px 24px;">Search</button>
+  </div>
+
+  <!-- Main Catalog Grid Layout -->
+  <div class="catalog-layout">
+    
+    <!-- Sidebar Filters -->
+    <aside>
+      <div class="filter-card">
+        <h3 class="filter-title">Filter Products</h3>
+
+        <!-- Categories -->
+        <div class="filter-group">
+          <label class="filter-label">Categories</label>
+          <label class="checkbox-item">
+            <input type="checkbox" class="cat-checkbox" value="Audio"> Audio & Headphones
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" class="cat-checkbox" value="Accessories"> Desk Accessories
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" class="cat-checkbox" value="Wearables"> Wearables
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" class="cat-checkbox" value="Video"> Video & Streaming
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" class="cat-checkbox" value="Charging"> Power & Charging
+          </label>
+        </div>
+
+        <!-- Price Range Filter (BUG-010 allows inverted values) -->
+        <div class="filter-group">
+          <label class="filter-label">Price Range ($)</label>
+          <div class="price-inputs">
+            <input type="number" id="min-price" class="filter-input" placeholder="Min" min="0" />
+            <span>—</span>
+            <input type="number" id="max-price" class="filter-input" placeholder="Max" min="0" />
+          </div>
+        </div>
+
+        <button id="apply-filter-btn" class="btn btn-primary btn-block btn-sm" style="margin-bottom: 8px;">Apply Filters</button>
+        <button id="clear-filter-btn" class="btn btn-secondary btn-block btn-sm">Clear All Filters</button>
+      </div>
+    </aside>
+
+    <!-- Product Cards Grid -->
+    <div>
+      <div class="product-grid" id="product-grid">
+        {% for p in products %}
+        <div class="product-card" 
+             data-id="{{ p.id }}" 
+             data-name="{{ p.name }}" 
+             data-category="{{ p.category }}" 
+             data-price="{{ p.price }}">
+          
+          <div class="product-img-wrap">
+            <span class="badge-tag">{{ p.category }}</span>
+            
+            <!-- BUG-006: Product #4 displays In Stock badge despite 0 stock -->
+            {% if p.display_stock_override %}
+              <span class="stock-tag-ok">{{ p.display_stock_override }}</span>
+            {% elif p.stock > 0 %}
+              <span class="stock-tag-ok">In Stock ({{ p.stock }} left)</span>
+            {% else %}
+              <span style="position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 600;">Out of Stock</span>
+            {% endif %}
+
+            <!-- BUG-014: Product #6 has broken image link -->
+            <a href="/product/{{ p.id }}?token={{ candidate.token if candidate else '' }}">
+              <img src="{{ p.image }}" alt="{{ p.name }}" class="product-img" />
+            </a>
+          </div>
+
+          <div class="product-body">
+            <a href="/product/{{ p.id }}?token={{ candidate.token if candidate else '' }}" class="product-name">{{ p.name }}</a>
+            <p class="product-desc">{{ p.description }}</p>
+            
+            <div style="font-size: 0.8rem; color: #f59e0b; margin-bottom: 8px;">
+              ★ {{ p.rating }} <span style="color: #94a3b8;">({{ p.reviews_count }} reviews)</span>
+            </div>
+
+            <div class="product-footer">
+              <span class="product-price">${{ "%.2f"|format(p.price) }}</span>
+              <button class="btn btn-primary btn-sm" onclick="ShopPulse.addToCart({{ p.id }}, '{{ p.name }}', {{ p.price }}, {{ p.stock }})">
+                + Add to Cart
+              </button>
+            </div>
+          </div>
+
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Empty state when no products match -->
+      <div id="empty-catalog-msg" style="display: none; text-align: center; padding: 60px 20px; background: white; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px;">
+        <div style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
+        <h3 style="font-size: 1.2rem; font-weight: 700; color: #1e293b;">No products matched your criteria</h3>
+        <p style="color: #64748b; font-size: 0.9rem; margin-top: 6px;">Try adjusting your search terms or clearing price filters.</p>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ShopPulse — Premium Audio & Tech{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  {% block extra_head %}{% endblock %}
+</head>
+<body id="qa-assessment-root" data-token="{{ candidate.token if candidate else '' }}">
+
+  <!-- Candidate Assessment Bar (Black-box context) -->
+  {% if candidate %}
+  <div class="candidate-status-bar">
+    <div>
+      <span style="opacity: 0.8;">QA Assessment Session:</span> 
+      <strong>{{ candidate.full_name }}</strong> 
+      <span style="opacity: 0.6; margin-left: 8px;">(Session: {{ candidate.token }})</span>
+    </div>
+    <div style="display: flex; gap: 16px; align-items: center;">
+      <a href="/brief?token={{ candidate.token }}" target="_blank" style="color: #93c5fd; text-decoration: underline; font-size: 0.8rem;">View Product Requirements (PRD)</a>
+      <span style="color: #cbd5e1;">|</span>
+      <span style="color: #facc15; font-weight: 600;">Status: Assessment In Progress</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Promotional Announcement (BUG-004 trigger: claims Free Shipping over $50) -->
+  <div class="announcement-bar">
+    <span>🚚 <strong>FLASH OFFER:</strong> Free Shipping on all orders over $50.00! Use code <strong>SAVE20</strong> for 20% off.</span>
+  </div>
+
+  <!-- Store Navigation Header -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="/?token={{ candidate.token if candidate else '' }}" class="brand">
+        <div class="brand-icon">SP</div>
+        <span>ShopPulse</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="/?token={{ candidate.token if candidate else '' }}" class="nav-link">Shop Catalog</a>
+        <a href="/cart?token={{ candidate.token if candidate else '' }}" class="cart-btn">
+          <span>🛒 Cart</span>
+          <span class="cart-badge" id="cart-count-badge">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Block -->
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer style="background: #0f172a; color: #94a3b8; padding: 40px 20px 80px 20px; font-size: 0.85rem; border-top: 1px solid #1e293b;">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+      <div>
+        <p style="font-weight: 700; color: white; font-size: 1rem; margin-bottom: 4px;">ShopPulse Electronics Inc.</p>
+        <p>© 2026 ShopPulse. All rights reserved.</p>
+      </div>
+      <div style="display: flex; gap: 24px;">
+        <a href="javascript:void(0)" id="open-terms-btn" style="color: #94a3b8; text-decoration: underline;">Terms of Service</a>
+        <a href="/brief?token={{ candidate.token if candidate else '' }}" style="color: #94a3b8; text-decoration: underline;">Testing Brief</a>
+        <a href="/admin" style="color: #64748b; text-decoration: none;">Reviewer Portal</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- BUG-017: Terms of Service Modal (ignores Esc, close has no aria-label) -->
+  <div class="modal-overlay" id="terms-modal">
+    <div class="modal-dialog">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h3 style="font-size:1.15rem; font-weight:700;">Terms & Conditions</h3>
+        <button id="close-terms-btn" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">✕</button>
+      </div>
+      <div style="font-size:0.88rem; color:#475569; line-height:1.6; max-height:260px; overflow-y:auto;">
+        <p>By placing an order on ShopPulse, you confirm that you are at least 18 years old and agree to all promotional limits, standard delivery timelines, and return policies.</p>
+        <p style="margin-top:10px;">Promotional coupon codes are single-use per customer account. Shipping charges apply to orders under specified free-shipping thresholds.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUG-009: 500 Server Error Crash Modal -->
+  <div class="modal-overlay" id="error-500-modal">
+    <div class="modal-dialog" style="border-top: 4px solid #dc2626;">
+      <h3 style="font-size:1.2rem; font-weight:700; color:#dc2626; margin-bottom:8px;">⚠️ 500 Internal Server Error</h3>
+      <p style="font-size:0.9rem; color:#334155; margin-bottom:12px;">The server encountered an unhandled exception while executing your query.</p>
+      <pre id="error-500-msg" style="background:#fee2e2; color:#991b1b; padding:12px; border-radius:6px; font-size:0.8rem; overflow-x:auto;"></pre>
+      <div style="margin-top:20px; text-align:right;">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('error-500-modal').classList.remove('active')">Dismiss</button>
+      </div>
+    </div>
+  </div>
+
+  {% if candidate %}
+  <!-- CANDIDATE FLOATING BUG REPORT DRAWER -->
+  <button id="bug-fab-btn" class="bug-fab-btn" title="Report a Bug">
+    <span>🐞</span>
+    <span>Report Bug</span>
+  </button>
+
+  <div class="bug-drawer-overlay" id="bug-drawer-overlay"></div>
+
+  <aside class="bug-drawer" id="bug-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">
+        <span>🐞</span>
+        <span>Candidate Bug Reporter</span>
+      </div>
+      <button id="drawer-close-btn" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">✕</button>
+    </div>
+
+    <div class="drawer-tabs">
+      <button class="drawer-tab active" id="tab-new-report">Log New Issue</button>
+      <button class="drawer-tab" id="tab-my-reports">
+        My Logged Issues (<span id="my-reports-count">0</span>)
+      </button>
+    </div>
+
+    <!-- Tab 1: New Bug Form -->
+    <div class="drawer-body" id="view-new-report">
+      <form id="bug-report-form">
+        <div class="form-group">
+          <label class="form-label">Issue Summary / Title *</label>
+          <input type="text" id="report-title" class="form-control" placeholder="e.g. Cart allows negative quantity reducing total" required />
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="form-group">
+          <div>
+            <label class="form-label">Category *</label>
+            <select id="report-category" class="form-control">
+              <option value="Business Logic">Business Logic</option>
+              <option value="Functional">Functional</option>
+              <option value="UI & Visual">UI & Visual</option>
+              <option value="Input Validation">Input Validation</option>
+              <option value="Error Handling">Error Handling</option>
+              <option value="Navigation">Navigation</option>
+              <option value="Security">Security</option>
+              <option value="Accessibility">Accessibility</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Severity *</label>
+            <select id="report-severity" class="form-control">
+              <option value="Blocker">Blocker (Critical)</option>
+              <option value="Major">Major</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="Minor">Minor / Trivial</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Steps to Reproduce *</label>
+          <textarea id="report-steps" class="form-control" rows="3" placeholder="1. Go to cart&#10;2. Type -1 in quantity&#10;3. Click update" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Expected Result *</label>
+          <textarea id="report-expected" class="form-control" rows="2" placeholder="What should happen according to specification?" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Actual Result *</label>
+          <textarea id="report-actual" class="form-control" rows="2" placeholder="What actually occurred?" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Environment / Viewport (Auto-captured)</label>
+          <input type="text" id="env-meta-info" class="form-control" style="background:#f1f5f9; font-size:0.75rem; color:#64748b;" readonly />
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">
+          <span>Submit Bug Report</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Tab 2: My Logged Reports List -->
+    <div class="drawer-body" id="view-my-reports" style="display:none;">
+      <div id="my-reports-container"></div>
+    </div>
+
+    <div class="drawer-footer">
+      <button class="btn btn-primary btn-sm" id="finalize-assessment-btn" style="background:#059669;">
+        <span>Finish & Submit Assessment</span>
+      </button>
+    </div>
+  </aside>
+  {% endif %}
+
+  <!-- Core Scripts -->
+  <script src="/static/js/store.js"></script>
+  {% if candidate %}
+  <script src="/static/js/reporter.js"></script>
+  {% endif %}
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

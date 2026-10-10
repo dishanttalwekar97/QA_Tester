@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Testing Practical Assessment — Candidate Briefing</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .brief-card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 16px;
+      padding: 36px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+    }
+    .spec-table th, .spec-table td {
+      border: 1px solid var(--gray-200);
+      padding: 10px 14px;
+      font-size: 0.88rem;
+    }
+    .spec-table th {
+      background: var(--gray-50);
+      text-align: left;
+    }
+  </style>
+</head>
+<body style="background: #f1f5f9; padding: 40px 20px;">
+
+  <div style="max-width: 860px; margin: 0 auto;">
+    
+    <!-- Assessment Header -->
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: #4f46e5; color: white; border-radius: 14px; font-weight: 800; font-size: 1.5rem; margin-bottom: 12px;">QA</div>
+      <h1 style="font-size: 2.2rem; font-weight: 800; color: #0f172a;">Quality Assurance Practical Assessment</h1>
+      <p style="color: #64748b; font-size: 1.05rem; margin-top: 6px;">Hands-On Exploratory & Functional Web Testing</p>
+    </div>
+
+    <!-- Candidate Session Initialization / Welcome -->
+    <div class="brief-card" style="border-left: 6px solid #4f46e5;">
+      <h2 style="font-size: 1.35rem; font-weight: 700; color: #1e1b4b; margin-bottom: 12px;">Candidate Onboarding</h2>
+      <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px;">
+        Welcome to your QA interview assessment. You are tasked with conducting thorough black-box exploratory and functional testing on our staging web application, <strong>ShopPulse</strong>.
+      </p>
+
+      {% if candidate %}
+      <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 18px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 0.8rem; color: #4338ca; text-transform: uppercase; font-weight: 700;">Active Session</div>
+          <div style="font-size: 1.15rem; font-weight: 800; color: #1e1b4b; margin-top: 2px;">{{ candidate.full_name }} ({{ candidate.email }})</div>
+          <div style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">Session Token: <code>{{ candidate.token }}</code></div>
+        </div>
+        <a href="/?token={{ candidate.token }}" class="btn btn-primary" style="padding: 12px 24px;">Enter Assessment Store ➔</a>
+      </div>
+      {% else %}
+      <form action="/candidate/start" method="POST" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 24px;">
+        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 16px;">Begin Your Assessment</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+          <div>
+            <label class="form-label">Full Name *</label>
+            <input type="text" name="full_name" class="form-control" placeholder="e.g. Jane Doe" required />
+          </div>
+          <div>
+            <label class="form-label">Email Address *</label>
+            <input type="email" name="email" class="form-control" placeholder="jane@example.com" required />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-size: 0.95rem;">
+          🚀 Start Assessment Session
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    <!-- Instructions & Assessment Rules -->
+    <div class="brief-card">
+      <h3 style="font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-bottom: 16px;">Assessment Protocol & Guidelines</h3>
+      
+      <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 6px; margin-bottom: 20px;">
+        <strong style="color: #92400e;">⚠️ Strict Black-Box Testing Notice:</strong>
+        <p style="font-size: 0.88rem; color: #78350f; margin-top: 4px;">
+          You will <strong>not</strong> be shown how many defects exist, nor will you receive completion percentages or hints. You must explore the application and identify defects independently based on software quality principles and the product requirements below.
+        </p>
+      </div>
+
+      <h4 style="font-size: 1rem; font-weight: 700; margin: 20px 0 8px 0; color: #1e293b;">How to Report Defects:</h4>
+      <p style="font-size: 0.9rem; color: #475569; line-height: 1.6;">
+        A floating <strong>"🐞 Report Bug"</strong> button is available in the bottom-right corner of every screen. Click it anytime to log an issue with:
+      </p>
+      <ul style="padding-left: 24px; color: #475569; font-size: 0.9rem; line-height: 1.7; margin-top: 8px;">
+        <li><strong>Title / Summary:</strong> Clear, concise defect statement.</li>
+        <li><strong>Steps to Reproduce:</strong> Unambiguous, numbered reproduction steps.</li>
+        <li><strong>Expected vs Actual Result:</strong> Exactly what should happen according to spec vs what failed.</li>
+        <li><strong>Severity:</strong> Accurate assessment (Blocker, Major, Medium, Minor).</li>
+      </ul>
+
+      <h4 style="font-size: 1rem; font-weight: 700; margin: 24px 0 8px 0; color: #1e293b;">Product Requirement Specifications (PRD):</h4>
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th style="width: 25%;">Area</th>
+            <th>Required Specification Behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Catalog & Search</strong></td>
+            <td>Search should handle text and alphanumeric input gracefully. Filter sliders must enforce valid ranges (Min ≤ Max). Product statuses (In Stock / Out of Stock) must accurately reflect warehouse state.</td>
+          </tr>
+          <tr>
+            <td><strong>Cart Management</strong></td>
+            <td>Quantities must be positive integers ≥ 1. Quantities must not exceed available inventory. Changing quantity to 0 or removing items must cleanly update totals and line items.</td>
+          </tr>
+          <tr>
+            <td><strong>Promotions & Shipping</strong></td>
+            <td>Promotional discounts (e.g. SAVE20) apply strictly once per order. Orders qualifying for free shipping ($50.00 threshold) must receive $0 shipping charge.</td>
+          </tr>
+          <tr>
+            <td><strong>Checkout & Orders</strong></td>
+            <td>Form fields must accept valid punctuation (apostrophes, hyphens in names). Credit cards expiring in future years must be accepted. Order placement must prevent duplicate submissions on double-clicks.</td>
+          </tr>
+          <tr>
+            <td><strong>UI & Usability</strong></td>
+            <td>All images must render or provide fallbacks. Modal dialogs should adhere to accessibility standards (e.g. keyboard navigation). Layout must remain fully accessible on mobile viewports.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.85rem; color: #64748b;">Suggested Assessment Duration: <strong>45–60 Minutes</strong></span>
+        {% if candidate %}
+        <a href="/?token={{ candidate.token }}" class="btn btn-primary">Go to Store Playground ➔</a>
+        {% endif %}
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
