@@ -18,6 +18,13 @@ const { matchCandidateReport } = require('./utils/bugMatcher');
 
 const PORT = process.env.PORT || 8000;
 const CLIENT_DIR = path.join(__dirname, '..', 'client', 'public');
+const ADMIN_PIN = process.env.ADMIN_PIN || 'admin123';
+const activeAdminTokens = new Set();
+
+function verifyAdminAuth(req, parsedUrl) {
+  const token = req.headers['x-admin-token'] || parsedUrl.query.adminToken;
+  return Boolean(token && activeAdminTokens.has(token));
+}
 
 // Initialize database with default products if empty
 async function initDatabase() {
@@ -110,7 +117,7 @@ function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token'
   });
   res.end(JSON.stringify(data));
 }
@@ -163,7 +170,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
+      'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token'
     });
     return res.end();
   }
@@ -315,8 +322,40 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 201, { success: true, orderId: order.orderId });
   }
 
-  // 9. Admin Candidates List: GET /api/admin/candidates
+  // 9. Admin Login Authentication: POST /api/admin/login
+  if (pathname === '/api/admin/login' && method === 'POST') {
+    const body = await parseJsonBody(req);
+    const pin = (body.pin || body.password || '').trim();
+
+    if (pin === ADMIN_PIN) {
+      const adminToken = 'adm-' + crypto.randomBytes(16).toString('hex');
+      activeAdminTokens.add(adminToken);
+      return sendJson(res, 200, {
+        success: true,
+        adminToken,
+        message: 'Admin access authorized.'
+      });
+    }
+
+    return sendJson(res, 401, {
+      success: false,
+      error: 'Invalid Admin Security PIN. Access denied.'
+    });
+  }
+
+  // 10. Admin Logout: POST /api/admin/logout
+  if (pathname === '/api/admin/logout' && method === 'POST') {
+    const body = await parseJsonBody(req);
+    if (body.adminToken) activeAdminTokens.delete(body.adminToken);
+    return sendJson(res, 200, { success: true });
+  }
+
+  // 11. Admin Candidates List: GET /api/admin/candidates
   if (pathname === '/api/admin/candidates' && method === 'GET') {
+    if (!verifyAdminAuth(req, parsedUrl)) {
+      return sendJson(res, 401, { error: 'Unauthorized: Admin authentication required.' });
+    }
+
     const candidates = await Candidate.find({});
     const reports = await collections.bugReports.find({});
 
@@ -332,8 +371,12 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, { candidates: formatted });
   }
 
-  // 10. Admin Candidate Detail: GET /api/admin/candidates/:id
+  // 12. Admin Candidate Detail: GET /api/admin/candidates/:id
   if (pathname.startsWith('/api/admin/candidates/') && !pathname.endsWith('/grade') && method === 'GET') {
+    if (!verifyAdminAuth(req, parsedUrl)) {
+      return sendJson(res, 401, { error: 'Unauthorized: Admin authentication required.' });
+    }
+
     const id = pathname.split('/')[4];
     const candidate = await Candidate.findById(id);
     if (!candidate) return sendJson(res, 404, { error: 'Candidate not found' });
@@ -355,8 +398,12 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  // 11. Admin Submit Grade: POST /api/admin/candidates/:id/grade
+  // 13. Admin Submit Grade: POST /api/admin/candidates/:id/grade
   if (pathname.startsWith('/api/admin/candidates/') && pathname.endsWith('/grade') && method === 'POST') {
+    if (!verifyAdminAuth(req, parsedUrl)) {
+      return sendJson(res, 401, { error: 'Unauthorized: Admin authentication required.' });
+    }
+
     const id = pathname.split('/')[4];
     const body = await parseJsonBody(req);
     await Candidate.updateReview(id, {
@@ -367,8 +414,11 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, { success: true });
   }
 
-  // 12. Admin Bug Catalog: GET /api/admin/bug-catalog
+  // 14. Admin Bug Catalog: GET /api/admin/bug-catalog
   if (pathname === '/api/admin/bug-catalog' && method === 'GET') {
+    if (!verifyAdminAuth(req, parsedUrl)) {
+      return sendJson(res, 401, { error: 'Unauthorized: Admin authentication required.' });
+    }
     return sendJson(res, 200, { seededBugs: SEEDED_BUGS });
   }
 
@@ -377,13 +427,17 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res, filePath);
 });
 
-initDatabase().then(() => {
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`========================================================`);
-    console.log(` 🚀 MERN QA Assessment Platform Server Running`);
-    console.log(` MongoDB Engine: collections in /data`);
-    console.log(` Express REST API & React SPA on: http://localhost:${PORT}`);
-    console.log(`========================================================`);
+module.exports = { server, initDatabase, activeAdminTokens, verifyAdminAuth };
+
+if (require.main === module) {
+  initDatabase().then(() => {
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`========================================================`);
+      console.log(` 🚀 MERN QA Assessment Platform Server Running`);
+      console.log(` MongoDB Engine: collections in /data`);
+      console.log(` Express REST API & React SPA on: http://localhost:${PORT}`);
+      console.log(`========================================================`);
+    });
   });
-});
+}
 

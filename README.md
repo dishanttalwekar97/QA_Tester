@@ -53,11 +53,15 @@ cd /home/tinyworks/Desktop/Testing_exam/QA_Tester
 ### 2. Access in Browser
 * **Candidate Briefing & Test Launch**: [http://localhost:8000/brief](http://localhost:8000/brief) (or [http://localhost:8000](http://localhost:8000))
 * **Store Playground**: [http://localhost:8000](http://localhost:8000)
-* **Evaluator / Admin Dashboard**: [http://localhost:8000/admin](http://localhost:8000/admin)
+* **Evaluator / Admin Dashboard**: [http://localhost:8000/admin](http://localhost:8000/admin) *(Secured: Protected by Admin Security PIN `admin123` or `$ADMIN_PIN` environment variable. Unauthorized requests are rejected with 401)*
 
 ### 3. Run Automated Tests
 ```bash
+# Core MERN models & blind matching test:
 bin/node test_mern_inprocess.js
+
+# Admin security, route lockdown & PIN auth verification:
+bin/node test_admin_security.js
 ```
 
 ---

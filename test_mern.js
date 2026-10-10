@@ -103,8 +103,25 @@ async function runTests() {
     }
     console.log('✓ GET /api/candidate/my-reports returned 1 report with ground truth redacted');
 
-    // 6. Test Admin Candidates List
-    const resAdmin = await makeRequest({ host: '127.0.0.1', port, path: '/api/admin/candidates', method: 'GET' });
+    // 6. Test Admin Login & Authenticated Candidates List
+    const resLogin = await makeRequest(
+      { host: '127.0.0.1', port, path: '/api/admin/login', method: 'POST', headers: { 'Content-Type': 'application/json' } },
+      { pin: 'admin123' }
+    );
+    const loginData = JSON.parse(resLogin.body);
+    if (!loginData.success || !loginData.adminToken) {
+      throw new Error('Admin login failed');
+    }
+    const adminToken = loginData.adminToken;
+    console.log('✓ POST /api/admin/login authenticated successfully with PIN');
+
+    const resAdmin = await makeRequest({
+      host: '127.0.0.1',
+      port,
+      path: '/api/admin/candidates',
+      method: 'GET',
+      headers: { 'X-Admin-Token': adminToken }
+    });
     const adminData = JSON.parse(resAdmin.body);
     if (!adminData.candidates || adminData.candidates.length === 0) {
       throw new Error('Failed to fetch admin candidates');
@@ -113,7 +130,13 @@ async function runTests() {
 
     // 7. Test Admin Candidate Detail & 20-Bug Matrix
     const candId = candData.candidate._id;
-    const resDetail = await makeRequest({ host: '127.0.0.1', port, path: `/api/admin/candidates/${candId}`, method: 'GET' });
+    const resDetail = await makeRequest({
+      host: '127.0.0.1',
+      port,
+      path: `/api/admin/candidates/${candId}`,
+      method: 'GET',
+      headers: { 'X-Admin-Token': adminToken }
+    });
     const detailData = JSON.parse(resDetail.body);
     if (!detailData.seededBugs || detailData.seededBugs.length !== 20) {
       throw new Error('Master seeded bug catalog should contain 20 bugs');
@@ -130,7 +153,10 @@ async function runTests() {
         port,
         path: `/api/admin/candidates/${candId}/grade`,
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Token': adminToken
+        }
       },
       { score: 95, decision: 'Strong Pass', notes: 'Excellent exploratory bug report with minimal repro steps.' }
     );

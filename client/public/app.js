@@ -112,20 +112,65 @@ function App() {
       .catch(() => {});
   };
 
-  const loadAdminCandidates = () => {
-    fetch('/api/admin/candidates')
-      .then(res => res.json())
+  const loadAdminCandidates = (tokenOverride) => {
+    const token = tokenOverride || sessionStorage.getItem('qa_admin_token');
+    if (!token) {
+      setIsAdminAuthenticated(false);
+      return;
+    }
+
+    fetch('/api/admin/candidates', {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Token': token
+      }
+    })
+      .then(res => {
+        if (res.status === 401) {
+          setIsAdminAuthenticated(false);
+          sessionStorage.removeItem('evaluator_auth');
+          sessionStorage.removeItem('qa_admin_token');
+          setAdminAuthError('Session expired or unauthorized. Please re-enter Admin Security PIN.');
+          return null;
+        }
+        return res.json();
+      })
       .then(data => {
-        if (data.candidates) setAdminCandidates(data.candidates);
+        if (data && data.candidates) {
+          setAdminCandidates(data.candidates);
+          setIsAdminAuthenticated(true);
+        }
       })
       .catch(() => {});
   };
 
   const loadCandidateDetail = (id) => {
-    fetch(`/api/admin/candidates/${id}`)
-      .then(res => res.json())
+    const token = sessionStorage.getItem('qa_admin_token');
+    if (!token) {
+      setIsAdminAuthenticated(false);
+      setRoute('admin');
+      return;
+    }
+
+    fetch(`/api/admin/candidates/${id}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Token': token
+      }
+    })
+      .then(res => {
+        if (res.status === 401) {
+          setIsAdminAuthenticated(false);
+          sessionStorage.removeItem('evaluator_auth');
+          sessionStorage.removeItem('qa_admin_token');
+          setRoute('admin');
+          setAdminAuthError('Session expired. Please log in.');
+          return null;
+        }
+        return res.json();
+      })
       .then(data => {
-        if (data.candidate) {
+        if (data && data.candidate) {
           setSelectedCandidateDetail(data);
           setAdminGrading({
             score: data.candidate.overallScore || data.suggestedScore || 0,
@@ -134,26 +179,53 @@ function App() {
           });
           setRoute('admin_detail');
         }
-      });
+      })
+      .catch(() => {});
   };
 
   const handleAdminLogin = (e) => {
     if (e) e.preventDefault();
-    const pass = adminPasswordInput.trim();
-    if (pass === 'admin123' || pass === 'evaluator2026') {
-      setIsAdminAuthenticated(true);
-      sessionStorage.setItem('evaluator_auth', 'true');
-      setAdminAuthError('');
-      loadAdminCandidates();
-      showToast('Evaluator portal unlocked successfully.', 'success');
-    } else {
-      setAdminAuthError('Access Denied: Incorrect passcode. Please check your credentials.');
+    const pin = adminPasswordInput.trim();
+    if (!pin) {
+      setAdminAuthError('Please enter the Admin Security PIN.');
+      return;
     }
+
+    fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && data.adminToken) {
+        setIsAdminAuthenticated(true);
+        sessionStorage.setItem('evaluator_auth', 'true');
+        sessionStorage.setItem('qa_admin_token', data.adminToken);
+        setAdminAuthError('');
+        loadAdminCandidates(data.adminToken);
+        showToast('Evaluator portal unlocked successfully.', 'success');
+      } else {
+        setAdminAuthError(data.error || 'Access Denied: Incorrect Security PIN.');
+      }
+    })
+    .catch(() => {
+      setAdminAuthError('Error communicating with authentication server.');
+    });
   };
 
   const handleAdminLogout = () => {
+    const token = sessionStorage.getItem('qa_admin_token');
+    if (token) {
+      fetch('/api/admin/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminToken: token })
+      }).catch(() => {});
+    }
     setIsAdminAuthenticated(false);
     sessionStorage.removeItem('evaluator_auth');
+    sessionStorage.removeItem('qa_admin_token');
     setRoute('store');
     showToast('Evaluator portal locked.', 'info');
   };
@@ -469,7 +541,7 @@ function App() {
             h('span', null, '🛒 Cart'),
             h('span', { className: 'cart-badge' }, totalCartCount)
           ),
-          h('button', {
+          !candidate && h('button', {
             onClick: () => {
               setRoute('admin');
               if (isAdminAuthenticated) loadAdminCandidates();
@@ -1026,7 +1098,9 @@ function App() {
           h('span', { style: { background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 700 } }, 'Submitted')
         )
       ),
-      h('button', { className: 'btn btn-secondary btn-sm', onClick: () => { setRoute('admin'); loadAdminCandidates(); } }, 'Go to Evaluator Portal')
+      h('div', { style: { display: 'flex', gap: 12, justifyContent: 'center' } },
+        h('button', { className: 'btn btn-secondary btn-sm', onClick: () => setRoute('store') }, 'Return to Store')
+      )
     );
   }
 
@@ -1280,16 +1354,32 @@ function App() {
         h('form', {
           onSubmit: (e) => {
             e.preventDefault();
+            const token = sessionStorage.getItem('qa_admin_token') || '';
             fetch(`/api/admin/candidates/${d.candidate._id}/grade`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Token': token
+              },
               body: JSON.stringify(adminGrading)
             })
-            .then(res => res.json())
-            .then(() => {
-              showToast('Evaluation saved successfully!', 'success');
-              setRoute('admin');
-              loadAdminCandidates();
+            .then(res => {
+              if (res.status === 401) {
+                setIsAdminAuthenticated(false);
+                sessionStorage.removeItem('evaluator_auth');
+                sessionStorage.removeItem('qa_admin_token');
+                setRoute('admin');
+                setAdminAuthError('Session expired. Please log in.');
+                return null;
+              }
+              return res.json();
+            })
+            .then(data => {
+              if (data && data.success) {
+                showToast('Evaluation saved successfully!', 'success');
+                setRoute('admin');
+                loadAdminCandidates();
+              }
             });
           }
         },
