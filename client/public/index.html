@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShopPulse — MERN QA Assessment Platform</title>
+  <link rel="stylesheet" href="/style.css">
+  
+  <!-- React 18 & ReactDOM 18 from CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+  <!-- Fallback in case offline / sandbox CDN is unreachable -->
+  <script>
+    if (!window.React || !window.ReactDOM) {
+      console.warn("CDN offline: Loading bundled React micro-runtime");
+      document.write('<script src="/react-bundle.js"><\/script>');
+    }
+  </script>
+</head>
+<body>
+  <!-- React Application Root Container -->
+  <div id="root"></div>
+
+  <!-- React Single Page App Script -->
+  <script src="/app.js"></script>
+</body>
+</html>

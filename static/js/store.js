@@ -438,3 +438,4 @@ function submitReview(productId) {
   textInput.value = "";
   showToast("Review submitted successfully!", "success");
 }
+

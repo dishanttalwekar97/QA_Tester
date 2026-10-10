@@ -272,3 +272,4 @@ def match_candidate_report(report_title: str, report_steps: str, report_actual: 
             
     confidence = min(100, best_score)
     return best_match, confidence
+

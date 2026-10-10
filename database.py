@@ -179,3 +179,4 @@ def update_candidate_review(candidate_id: int, score: float, decision: str, note
     """, (score, decision, notes, candidate_id))
     conn.commit()
     conn.close()
+

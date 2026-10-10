@@ -1,39 +1,66 @@
-# ShopPulse — QA Tester Hiring & Assessment Platform
+# ShopPulse — MERN Stack QA Tester Hiring Assessment Platform
 
-A realistic web application built specifically for hiring and assessing QA engineers through **hands-on, black-box exploratory testing**.
+A full-stack **MERN (MongoDB, Express, React, Node.js)** web application built specifically for hiring and assessing QA engineers through **strict black-box exploratory testing**.
 
 ---
 
-## 🌟 Core Philosophy: Strict Black-Box Testing
+## 🌟 MERN Architecture Overview
 
-In real-world QA engineering, testers are not told how many bugs exist or given hints on where to look. They are provided with **Product Requirements (PRD)** and must independently explore the application, test boundaries, probe edge cases, and report defects.
+```
+QA_Tester/
+├── client/
+│   └── public/
+│       ├── index.html            # React Single Page App container
+│       ├── style.css             # Modern styling & responsive breakpoints
+│       ├── app.js                # React 18 component tree (Single Page App)
+│       └── react-bundle.js       # Offline React micro-runtime fallback
+├── server/
+│   ├── server.js                 # Express REST API server
+│   ├── db/
+│   │   ├── mongo.js              # MongoDB document engine (Mongoose-compatible)
+│   │   └── seedData.js           # 20 Seeded QA Bugs & initial product catalog
+│   ├── models/
+│   │   ├── Candidate.js          # MongoDB Candidate model
+│   │   ├── BugReport.js          # MongoDB BugReport model (with candidate redaction)
+│   │   └── Product.js            # MongoDB Product & Order models
+│   └── utils/
+│       └── bugMatcher.js         # Server-side similarity matching algorithm
+├── data/                         # MongoDB document store collections (.json)
+├── run.sh                        # One-click launcher script
+└── package.json                  # MERN project definition
+```
 
-* **No Bug Counts**: Candidates are **never** shown counters like *"5 of 20 bugs found"*.
-* **No Progress Bars**: There are no completion meters, checklists, or categories shown to candidates.
-* **Personal Submission Log**: Candidates can view what they personally submitted to review their notes, with **zero feedback** on whether a report was correct or matched a real defect.
-* **Zero Client Leakage**: The master list of 20 bugs and scoring criteria resides strictly on the server and is never sent to the client browser bundle.
+---
+
+## 🛡️ Strict Black-Box Testing Principle
+
+Candidates are evaluated under true exploratory testing conditions:
+* **No Bug Counts**: The candidate interface contains **no** "Bugs found: 4/20" counters.
+* **No Progress Indicators**: No completion percentages, category quotas, or checklists.
+* **Personal Submission Log Only**: Candidates can view their own logged drafts to review what they personally reported, with **zero feedback** on whether a report is correct or valid.
+* **Backend Isolation**: Ground-truth bug IDs and scores are stored strictly in MongoDB on the server and are **never** exposed in client-side bundles or network payloads.
 
 ---
 
 ## 🐞 The 20 Seeded Bugs (Ground-Truth Catalog)
 
-| Bug ID | Category | Severity | Title & Behavior | What It Tests |
+| Bug ID | Category | Severity | Description | What It Evaluates |
 | :--- | :--- | :--- | :--- | :--- |
-| **BUG-001** | Business Logic | **Blocker** | **Negative Quantity Exploit**: Entering `-1` or `-5` in cart multiplies unit price negatively, lowering the order total or generating store credit. | Negative numbers, boundary limits |
-| **BUG-002** | Business Logic | **Blocker** | **Infinite Coupon Stacking**: Entering `SAVE20` can be clicked repeatedly, continuously compounding 20% off without single-use validation. | Idempotency, promotional state |
-| **BUG-003** | Concurrency | **Blocker** | **Double-Click Duplicate Order**: Rapidly clicking "Place Order" lacks debouncing/disabling and fires multiple duplicate orders. | Race conditions, button debouncing |
+| **BUG-001** | Business Logic | **Blocker** | **Negative Quantity Exploit**: In cart, entering negative numbers (`-1`, `-5`) multiplies unit price negatively, lowering the order total or generating store credit. | Boundary testing, negative numbers |
+| **BUG-002** | Business Logic | **Blocker** | **Infinite Coupon Stacking**: Entering `SAVE20` can be clicked repeatedly, continuously compounding 20% discounts endlessly. | Idempotency, promotional state |
+| **BUG-003** | Concurrency | **Blocker** | **Double-Click Duplicate Order**: Rapidly clicking "Place Order" lacks debouncing and triggers duplicate orders with separate IDs. | Race conditions, button debouncing |
 | **BUG-004** | Business Logic | **Major** | **Free Shipping Threshold Glitch**: Banner advertises "Free Shipping over $50", but the cart charges $10 shipping until subtotal > $100. | Specification compliance |
-| **BUG-005** | Cart State | **Major** | **Zero Quantity Lingers**: Editing quantity to `0` leaves the item in the cart with $0.00 line total instead of removing it. | Collection cleanup, edge-case input |
+| **BUG-005** | Cart State | **Major** | **Zero Quantity Lingers**: Changing quantity to `0` leaves the item in the cart as a $0.00 ghost item instead of removing it. | Collection cleanup, edge-case input |
 | **BUG-006** | Data Consistency | **Major** | **In-Stock Badge vs Add-to-Cart Failure**: Product #4 displays "In Stock (12 left)", but clicking "Add to Cart" triggers "Out of Stock" error toast. | Component state synchronization |
-| **BUG-007** | Input Validation | **Major** | **Apostrophe / Hyphen Rejection**: Checkout form regex `/^[a-zA-Z0-9 ]+$/` rejects valid names like `O'Connor` or `Mary-Jane`. | Real-world string sanitization |
+| **BUG-007** | Input Validation | **Major** | **Apostrophe / Hyphen Rejection**: Checkout form regex rejects valid names like `O'Connor` or `Mary-Jane`. | Real-world string sanitization |
 | **BUG-008** | Inventory Limit | **Major** | **Max Stock Bypass**: Manually typing `50` in cart quantity for Product #2 (which has only 3 in stock) bypasses inventory limits. | Inventory constraints |
-| **BUG-009** | Error Handling | **Major** | **Special Character Search Crash**: Searching with `%`, `'`, or `?` triggers an unhandled 500 server error modal instead of an empty results view. | Error handling resilience |
+| **BUG-009** | Error Handling | **Major** | **Special Character Search Crash**: Searching with `%`, `'`, or `?` triggers an unhandled 500 server error modal instead of empty results. | Error handling resilience |
 | **BUG-010** | Filter Validation | **Medium** | **Inverted Price Range**: Entering Min Price ($80) higher than Max Price ($20) is accepted without validation. | Relational boundary validation |
-| **BUG-011** | State Persistence | **Medium** | **Cart Lost on Page Reload (F5)**: Refreshing the browser resets the guest cart to empty because local storage persistence is missing. | Session resilience |
+| **BUG-011** | State Persistence | **Medium** | **Cart Lost on Page Reload (F5)**: Refreshing the browser resets the cart to empty because local storage persistence is missing. | Session resilience |
 | **BUG-012** | Input Validation | **Medium** | **Future Expiry Date (12/30) Flagged as Expired**: Entering December 2030 triggers "Card expired" due to two-digit year parsing defect. | Date parsing boundaries |
 | **BUG-013** | Responsive UI | **Medium** | **Mobile Sticky Checkout Bar Overlap**: On viewport widths `< 450px`, the fixed checkout bar obscures the terms checkbox. | Responsive cross-device testing |
 | **BUG-014** | Visual UI | **Minor** | **Broken Image Asset**: Product #6 ("Mechanical Keyboard") has a 404 image link without fallback placeholder. | Visual inspection, asset loading |
-| **BUG-015** | Visual UI | **Minor** | **Missing Currency Symbol**: Product detail page renders price as `149.99` instead of `$149.99`. | Formatting consistency |
+| **BUG-015** | Visual UI | **Minor** | **Missing Currency Symbol**: Product detail modal renders price as `149.99` instead of `$149.99`. | Formatting consistency |
 | **BUG-016** | Usability | **Minor** | **Filter Reset Inconsistency**: "Clear All Filters" button clears text query but leaves category checkboxes checked. | Form state reset testing |
 | **BUG-017** | Accessibility | **Minor** | **Modal Escape Key Non-Responsive**: Terms of Service modal cannot be closed using `Esc` key and close icon lacks `aria-label`. | Keyboard a11y (WCAG) |
 | **BUG-018** | Security | **Medium** | **Unsanitized Review Submission (XSS)**: Submitting review comments with HTML tags (e.g. `<b>`, `<i>`) renders raw unescaped HTML. | Security QA, sanitization |
@@ -42,38 +69,20 @@ In real-world QA engineering, testers are not told how many bugs exist or given 
 
 ---
 
-## 🚀 Quick Start & How to Run
+## 🚀 How to Run the MERN Application
 
-### 1. Launch the Server
+### 1. Launch Server
 ```bash
+cd /home/tinyworks/Desktop/Testing_exam/QA_Tester
 ./run.sh
-# Or directly:
-python3 app.py
 ```
-The server runs on **`http://localhost:8000`** with zero external dependencies (pure Python standard library + Jinja2 + SQLite).
 
----
+### 2. Access in Browser
+* **Candidate Briefing & Test Launch**: [http://localhost:8000/brief](http://localhost:8000/brief) (or [http://localhost:8000](http://localhost:8000))
+* **Store Playground**: [http://localhost:8000](http://localhost:8000)
+* **Evaluator / Admin Dashboard**: [http://localhost:8000/admin](http://localhost:8000/admin)
 
-## 👥 How to Conduct an Assessment
-
-### Step 1: Candidate Starts the Assessment
-Send the candidate to:
-👉 **`http://localhost:8000/brief`**
-
-1. The candidate reads the **Product Requirements (PRD)** and testing protocol.
-2. They enter their name and email to start an isolated session.
-3. They are redirected to the store with a floating **"🐞 Report Bug"** drawer in the bottom right corner.
-4. They explore the store, uncover defects, and log them (Summary, Steps to Reproduce, Expected vs Actual, Severity).
-5. When finished, they click **"Finish & Submit Assessment"**.
-
-### Step 2: Hiring Manager Evaluates the Candidate
-Visit the Evaluator Dashboard:
-👉 **`http://localhost:8000/admin`**
-
-1. View all candidates and their submitted reports.
-2. Click **"Review & Grade"** on any applicant to open their detailed grading sheet.
-3. The platform displays:
-   - **Coverage Matrix**: Visual grid showing which of the 20 seeded bugs were discovered vs missed.
-   - **Automated Bug Matching**: Matches candidate descriptions to canonical bug IDs (e.g., `BUG-001`, `BUG-002`) with match confidence.
-   - **Report Quality Verification**: Reviewer inspects the clarity of reproduction steps and verifies if Expected vs Actual outcomes were accurately stated.
-   - **Final Decision & Score**: Assign an overall score (0–100), hiring recommendation (*Strong Pass*, *Pass*, *Consider*, *Reject*), and evaluation notes.
+### 3. Run Automated Tests
+```bash
+bin/node test_mern_inprocess.js
+```
