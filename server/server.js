@@ -75,6 +75,8 @@ function getMimeType(filePath) {
   return map[ext] || 'application/octet-stream';
 }
 
+const staticCache = new Map();
+
 function serveStatic(req, res, filePath) {
   // BUG-014: Broken image intentionally returns 404
   if (filePath.includes('keyboard_broken.png')) {
@@ -82,20 +84,29 @@ function serveStatic(req, res, filePath) {
     return res.end('404 Not Found: Image asset missing');
   }
 
-  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-    res.writeHead(200, { 'Content-Type': getMimeType(filePath) });
-    fs.createReadStream(filePath).pipe(res);
-  } else {
+  let targetPath = filePath;
+  if (!fs.existsSync(targetPath) || !fs.statSync(targetPath).isFile()) {
     // Single Page App fallback: serve index.html for non-API client routes
-    const indexPath = path.join(CLIENT_DIR, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      fs.createReadStream(indexPath).pipe(res);
-    } else {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('404 Not Found');
-    }
+    targetPath = path.join(CLIENT_DIR, 'index.html');
   }
+
+  if (fs.existsSync(targetPath)) {
+    const mime = getMimeType(targetPath);
+    let cached = staticCache.get(targetPath);
+    if (!cached) {
+      cached = fs.readFileSync(targetPath);
+      staticCache.set(targetPath, cached);
+    }
+    res.writeHead(200, {
+      'Content-Type': mime,
+      'Content-Length': cached.length,
+      'Cache-Control': 'public, max-age=600'
+    });
+    return res.end(cached);
+  }
+
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('404 Not Found');
 }
 
 const server = http.createServer(async (req, res) => {
