@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const crypto = require('crypto');
+const os = require('os');
 
 const Candidate = require('./models/Candidate');
 const BugReport = require('./models/BugReport');
@@ -419,14 +420,29 @@ const server = http.createServer(async (req, res) => {
 
 module.exports = { server, initDatabase, activeAdminTokens, verifyAdminAuth };
 
+function getLocalIpAddress() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
 if (require.main === module) {
   initDatabase().then(() => {
     server.listen(PORT, '0.0.0.0', () => {
-      console.log(`========================================================`);
+      const lanIp = getLocalIpAddress();
+      console.log(`================================================================`);
       console.log(` 🚀 MERN QA Assessment Platform Server Running`);
-      console.log(` MongoDB Engine: collections in /data`);
-      console.log(` Express REST API & React SPA on: http://localhost:${PORT}`);
-      console.log(`========================================================`);
+      console.log(` 💾 MongoDB Storage:     /data (Persistent Documents)`);
+      console.log(` 🖥️  Coordinator PC URL:  http://localhost:${PORT}`);
+      console.log(` 🌐 College Lab LAN URL: http://${lanIp}:${PORT}  <-- Share with Students`);
+      console.log(` 🔒 Admin Evaluator PIN: ${ADMIN_PIN}`);
+      console.log(`================================================================`);
     });
   });
 }
