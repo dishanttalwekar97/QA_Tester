@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Tata CLiQ Luxury Inspired Sharp Styling for ShopPulse QA Platform
+   Sharp Luxury Styling for ShopPulse QA Platform
    Aesthetic: Deep Ebony / Luxury Dark Header (#0e0e10), Vivid Magenta Accent (#da1c5c),
    Crisp High-Contrast Typography, Sharp Product Cards, Elevated Carousel
    ========================================================================== */
@@ -50,7 +50,7 @@ body {
 }
 
 /* ==========================================================================
-   TOP UTILITY BAR (Tata CLiQ Luxury Utility Strip)
+   TOP UTILITY BAR
    ========================================================================== */
 .cliq-topbar {
   background: var(--dark-topbar);
@@ -143,7 +143,7 @@ body {
 }
 
 /* ==========================================================================
-   MAIN NAVBAR (Tata CLiQ Luxury Dark Header)
+   MAIN NAVBAR (Luxury Dark Header)
    ========================================================================== */
 .navbar {
   background: var(--dark-header);
@@ -164,23 +164,13 @@ body {
   gap: 24px;
 }
 
-/* Logo: Tata CLiQ Inspired */
+/* Logo */
 .cliq-logo-wrap {
   display: flex;
   flex-direction: column;
   cursor: pointer;
   user-select: none;
   min-width: 170px;
-}
-
-.cliq-logo-tata {
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 3px;
-  color: #ffffff;
-  text-transform: uppercase;
-  line-height: 1;
-  margin-bottom: 2px;
 }
 
 .cliq-logo-pulse {
@@ -355,7 +345,7 @@ body {
 }
 
 /* ==========================================================================
-   TATA CLIQ LUXURY HERO BANNER CAROUSEL
+   HERO BANNER CAROUSEL
    ========================================================================== */
 .cliq-hero-wrapper {
   margin: 20px 0 36px 0;

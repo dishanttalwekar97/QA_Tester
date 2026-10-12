@@ -566,7 +566,7 @@ function App() {
   // --- RENDER SECTIONS ---
 
   return h('div', null,
-    // Tata CLiQ Luxury Utility Strip
+    // Luxury Utility Strip
     h('div', { className: 'cliq-topbar' },
       h('div', { className: 'cliq-topbar-left' },
         h('span', {
@@ -622,12 +622,11 @@ function App() {
       h('span', null, '🚚 FLASH OFFER: Free Shipping on all orders over $50.00! Use code SAVE20 for 20% off.')
     ),
 
-    // Main Navbar (Tata CLiQ Luxury Dark Styling)
+    // Main Navbar (Luxury Dark Styling)
     h('header', { className: 'navbar' },
       h('div', { className: 'nav-container' },
         // Logo
         h('div', { className: 'cliq-logo-wrap', onClick: () => setRoute('store') },
-          h('span', { className: 'cliq-logo-tata' }, 'TATA'),
           h('div', { className: 'cliq-logo-pulse' },
             h('span', { className: 'logo-white' }, 'SHOP'),
             h('span', { className: 'logo-accent' }, 'PULSE')
@@ -977,7 +976,7 @@ function App() {
 
   function renderStoreView() {
     return h('div', { className: 'container' },
-      // Tata CLiQ Style Wide Hero Carousel
+      // Wide Hero Carousel
       h('div', { className: 'cliq-hero-wrapper' },
         h('div', { className: 'cliq-hero-stage' },
           // Left Preview Card
