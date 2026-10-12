@@ -493,7 +493,11 @@ function App() {
         h('strong', null, candidate.fullName),
         h('span', { style: { opacity: 0.6, marginLeft: 8 } }, `(${candidate.token})`)
       ),
-      h('div', { style: { display: 'flex', gap: 16 } },
+      h('div', { style: { display: 'flex', gap: 14, alignItems: 'center' } },
+        h('button', {
+          onClick: () => { setDrawerOpen(true); setDrawerTab('guide'); },
+          style: { background: '#4f46e5', border: 'none', color: 'white', padding: '3px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }
+        }, '🎯 4 Student Missions Checklist'),
         h('button', {
           onClick: () => setRoute('brief'),
           style: { background: 'none', border: 'none', color: '#93c5fd', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem' }
@@ -621,20 +625,27 @@ function App() {
             }, '✕')
           ),
 
-          // Drawer Tabs (Strictly blind: NO total counts or hints)
+          // Drawer Tabs
           h('div', { className: 'drawer-tabs' },
             h('button', {
               className: `drawer-tab ${drawerTab === 'new' ? 'active' : ''}`,
               onClick: () => setDrawerTab('new')
-            }, 'Log New Issue'),
+            }, 'Log Issue'),
+            h('button', {
+              className: `drawer-tab ${drawerTab === 'guide' ? 'active' : ''}`,
+              onClick: () => setDrawerTab('guide'),
+              style: { color: drawerTab === 'guide' ? '#4f46e5' : '#475569', fontWeight: 700 }
+            }, '🎯 Missions Guide'),
             h('button', {
               className: `drawer-tab ${drawerTab === 'my' ? 'active' : ''}`,
               onClick: () => setDrawerTab('my')
-            }, `My Logged Issues (${myReports.length})`)
+            }, `My Reports (${myReports.length})`)
           ),
 
           // Drawer Body
-          drawerTab === 'new' ? renderNewReportForm() : renderMyReportsTab(),
+          drawerTab === 'new' && renderNewReportForm(),
+          drawerTab === 'guide' && renderMissionsTab(),
+          drawerTab === 'my' && renderMyReportsTab(),
 
           h('div', { style: { padding: '16px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', textAlign: 'right' } },
             h('button', {
@@ -754,6 +765,41 @@ function App() {
           h('li', null, 'Orders over $50.00 must receive free shipping ($0.00).'),
           h('li', null, 'Checkout must validate valid names (including apostrophes/hyphens) and future credit cards.'),
           h('li', null, 'Order placement must be debounced to prevent duplicate submissions.')
+        ),
+        h('div', { style: { marginTop: 24, marginBottom: 24 } },
+          h('h4', { style: { fontSize: '1.1rem', fontWeight: 800, color: '#1e1b4b', marginBottom: 12 } }, '🎯 Your 4 Guided Student Testing Missions:'),
+          h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 } },
+            [
+              {
+                icon: '🔍',
+                title: 'Mission 1: Store & Search Exploration',
+                desc: 'Search for products like "Mouse" or "Earbuds". Test category checkboxes and try clicking "Clear All Filters". Check if all product photos load.'
+              },
+              {
+                icon: '🛒',
+                title: 'Mission 2: Cart, Quantities & Discounts',
+                desc: 'Add items to cart. Test entering quantity 0 or negative numbers. Try promo code SAVE20. Check if orders over $50 get free shipping.'
+              },
+              {
+                icon: '📝',
+                title: 'Mission 3: Checkout & Form Validation',
+                desc: 'Test checkout inputs. What happens if you leave address blank? What if you enter an invalid email? Does card expiry accept future dates?'
+              },
+              {
+                icon: '⭐',
+                title: 'Mission 4: Product Popups & Reviews',
+                desc: 'Click products to view full specs. Check if price shows the $ symbol. Try opening Terms of Service and closing it with Esc key.'
+              }
+            ].map((m, idx) =>
+              h('div', { key: idx, style: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 14 } },
+                h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', fontWeight: 700, color: '#1e293b', marginBottom: 4 } },
+                  h('span', { style: { fontSize: '1.2rem' } }, m.icon),
+                  h('span', null, m.title)
+                ),
+                h('p', { style: { fontSize: '0.84rem', color: '#64748b', lineHeight: 1.5 } }, m.desc)
+              )
+            )
+          )
         ),
         candidate && h('div', { style: { marginTop: 24, textAlign: 'right' } },
           h('button', { className: 'btn btn-primary', onClick: () => setRoute('store') }, 'Go to Store Playground ➔')
@@ -1106,77 +1152,187 @@ function App() {
 
   function renderNewReportForm() {
     return h('div', { className: 'drawer-body' },
+      // Quick Sample Helper Card
+      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, background: '#eff6ff', border: '1px solid #bfdbfe', padding: '8px 12px', borderRadius: 8 } },
+        h('span', { style: { fontSize: '0.8rem', color: '#1e40af', fontWeight: 600 } }, '💡 First time reporting a bug?'),
+        h('button', {
+          type: 'button',
+          onClick: () => {
+            setBugForm({
+              title: 'Free shipping over $50 banner not working in cart',
+              category: 'Business Logic',
+              severity: 'Major',
+              steps: '1. Add $79 earbuds to cart\n2. View cart shipping calculation',
+              expected: 'Shipping should be free ($0.00)',
+              actual: 'Cart still charged $10.00 shipping fee'
+            });
+          },
+          style: { background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline' }
+        }, 'Load Sample Template')
+      ),
+
       h('form', { onSubmit: handleBugReportSubmit },
-        h('div', { className: 'form-group' },
-          h('label', { className: 'form-label' }, 'Issue Summary / Title *'),
+        h('div', { className: 'form-group', style: { marginBottom: 10 } },
+          h('label', { className: 'form-label', style: { fontSize: '0.83rem', fontWeight: 700 } }, 'What is the bug? (Short Title) *'),
           h('input', {
             className: 'form-control',
-            placeholder: 'e.g. Negative quantity in cart decreases total',
+            placeholder: 'e.g. Coupon SAVE20 applies multiple times',
             value: bugForm.title,
             onChange: e => setBugForm({ ...bugForm, title: e.target.value }),
-            required: true
+            required: true,
+            style: { padding: '8px 12px', fontSize: '0.88rem' }
           })
         ),
-        h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }, className: 'form-group' },
+
+        h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 } },
           h('div', null,
-            h('label', { className: 'form-label' }, 'Category *'),
+            h('label', { className: 'form-label', style: { fontSize: '0.8rem', fontWeight: 700 } }, 'Feature Area *'),
             h('select', {
               className: 'form-control',
               value: bugForm.category,
-              onChange: e => setBugForm({ ...bugForm, category: e.target.value })
+              onChange: e => setBugForm({ ...bugForm, category: e.target.value }),
+              style: { padding: '7px 10px', fontSize: '0.82rem' }
             },
-              ['Business Logic', 'Functional', 'UI & Visual', 'Input Validation', 'Error Handling', 'Navigation', 'Security', 'Accessibility', 'Other'].map(c =>
-                h('option', { key: c, value: c }, c)
-              )
+              [
+                { label: '🛒 Cart & Pricing', val: 'Business Logic' },
+                { label: '⚙️ Features & Buttons', val: 'Functional' },
+                { label: '🎨 Visual & Display', val: 'UI & Visual' },
+                { label: '📝 Forms & Inputs', val: 'Input Validation' },
+                { label: '🔍 Search & Filters', val: 'Filter Validation' },
+                { label: 'Other', val: 'Other' }
+              ].map(c => h('option', { key: c.val, value: c.val }, c.label))
             )
           ),
           h('div', null,
-            h('label', { className: 'form-label' }, 'Severity *'),
+            h('label', { className: 'form-label', style: { fontSize: '0.8rem', fontWeight: 700 } }, 'Impact Level *'),
             h('select', {
               className: 'form-control',
               value: bugForm.severity,
-              onChange: e => setBugForm({ ...bugForm, severity: e.target.value })
+              onChange: e => setBugForm({ ...bugForm, severity: e.target.value }),
+              style: { padding: '7px 10px', fontSize: '0.82rem' }
             },
-              ['Blocker', 'Major', 'Medium', 'Minor'].map(s =>
-                h('option', { key: s, value: s }, s)
-              )
+              [
+                { label: '🔴 Critical (Breaks store/payment)', val: 'Blocker' },
+                { label: '🟠 Major (Feature not working)', val: 'Major' },
+                { label: '🟡 Medium (Unexpected behavior)', val: 'Medium' },
+                { label: '🟢 Minor (Visual glitch / typo)', val: 'Minor' }
+              ].map(s => h('option', { key: s.val, value: s.val }, s.label))
             )
           )
         ),
-        h('div', { className: 'form-group' },
-          h('label', { className: 'form-label' }, 'Steps to Reproduce *'),
+
+        h('div', { className: 'form-group', style: { marginBottom: 10 } },
+          h('label', { className: 'form-label', style: { fontSize: '0.83rem', fontWeight: 700 } }, 'Steps to See the Bug *'),
           h('textarea', {
             className: 'form-control',
-            rows: 3,
-            placeholder: '1. Add item\n2. Type -1 in quantity\n3. Check total',
+            rows: 2,
+            placeholder: '1. Add item to cart\n2. Change quantity to -1',
             value: bugForm.steps,
             onChange: e => setBugForm({ ...bugForm, steps: e.target.value }),
-            required: true
+            required: true,
+            style: { padding: '8px 12px', fontSize: '0.85rem' }
           })
         ),
-        h('div', { className: 'form-group' },
-          h('label', { className: 'form-label' }, 'Expected Result *'),
-          h('textarea', {
-            className: 'form-control',
-            rows: 2,
-            placeholder: 'What should happen according to spec?',
-            value: bugForm.expected,
-            onChange: e => setBugForm({ ...bugForm, expected: e.target.value }),
-            required: true
-          })
+
+        h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 } },
+          h('div', null,
+            h('label', { className: 'form-label', style: { fontSize: '0.8rem', fontWeight: 700, color: '#166534' } }, 'Expected Behavior *'),
+            h('textarea', {
+              className: 'form-control',
+              rows: 2,
+              placeholder: 'What should have happened?',
+              value: bugForm.expected,
+              onChange: e => setBugForm({ ...bugForm, expected: e.target.value }),
+              required: true,
+              style: { padding: '6px 10px', fontSize: '0.83rem' }
+            })
+          ),
+          h('div', null,
+            h('label', { className: 'form-label', style: { fontSize: '0.8rem', fontWeight: 700, color: '#991b1b' } }, 'Actual Problem *'),
+            h('textarea', {
+              className: 'form-control',
+              rows: 2,
+              placeholder: 'What actually went wrong?',
+              value: bugForm.actual,
+              onChange: e => setBugForm({ ...bugForm, actual: e.target.value }),
+              required: true,
+              style: { padding: '6px 10px', fontSize: '0.83rem' }
+            })
+          )
         ),
-        h('div', { className: 'form-group' },
-          h('label', { className: 'form-label' }, 'Actual Result *'),
-          h('textarea', {
-            className: 'form-control',
-            rows: 2,
-            placeholder: 'What defect occurred?',
-            value: bugForm.actual,
-            onChange: e => setBugForm({ ...bugForm, actual: e.target.value }),
-            required: true
-          })
-        ),
-        h('button', { type: 'submit', className: 'btn btn-primary btn-block' }, 'Submit Bug Report')
+
+        h('button', {
+          type: 'submit',
+          className: 'btn btn-primary btn-block',
+          style: { padding: '10px', fontWeight: 700, fontSize: '0.95rem' }
+        }, '✓ Save Bug Report')
+      )
+    );
+  }
+
+  function renderMissionsTab() {
+    const missions = [
+      {
+        title: 'Mission 1: Store & Search Exploration',
+        icon: '🔍',
+        desc: 'Browse product cards, test search bar with common terms, select category checkboxes, and test "Clear All Filters".',
+        tips: 'Are all product images loading properly? Does clicking "Clear All Filters" uncheck every checkbox?'
+      },
+      {
+        title: 'Mission 2: Cart, Stock & Discounts',
+        icon: '🛒',
+        desc: 'Add items to your cart, test promo coupon SAVE20, and try changing quantities in the cart.',
+        tips: 'What happens if you type 0 or a negative number in the quantity box? Does the banner promise free shipping over $50 match the cart math?'
+      },
+      {
+        title: 'Mission 3: Checkout & Form Rules',
+        icon: '📝',
+        desc: 'Proceed to checkout and test input fields, payment data, and order placement.',
+        tips: 'Try placing an order with blank name or address. Does the card expiry accept future years like 12/30?'
+      },
+      {
+        title: 'Mission 4: Product Popups & Reviews',
+        icon: '⭐',
+        desc: 'Click on product cards to open the detail modal, check pricing display, and submit a customer review.',
+        tips: 'Does the price inside the product popup include a $ dollar sign? Can you close the Terms popup using the Esc key?'
+      }
+    ];
+
+    return h('div', { className: 'drawer-body' },
+      h('div', { style: { marginBottom: 14 } },
+        h('h3', { style: { fontSize: '1.05rem', fontWeight: 800, color: '#1e1b4b' } }, '🎯 4 Student Testing Missions'),
+        h('p', { style: { fontSize: '0.84rem', color: '#64748b', marginTop: 2 } },
+          'Follow these 4 missions to guide your testing. Whenever you notice something wrong, switch back to "Log Issue" to report it.'
+        )
+      ),
+      missions.map((m, i) =>
+        h('div', {
+          key: i,
+          style: {
+            background: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 10,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+          }
+        },
+          h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', marginBottom: 4 } },
+            h('span', { style: { fontSize: '1.1rem' } }, m.icon),
+            h('span', null, m.title)
+          ),
+          h('p', { style: { fontSize: '0.82rem', color: '#475569', marginBottom: 6, lineHeight: 1.4 } }, m.desc),
+          h('div', { style: { background: '#f8fafc', padding: '6px 10px', borderRadius: 6, fontSize: '0.78rem', color: '#4338ca', borderLeft: '3px solid #6366f1' } },
+            h('strong', null, 'What to look for: '), m.tips
+          )
+        )
+      ),
+      h('div', { style: { textAlign: 'center', marginTop: 14 } },
+        h('button', {
+          className: 'btn btn-primary btn-block',
+          onClick: () => setDrawerTab('new'),
+          style: { padding: 10, fontWeight: 700 }
+        }, 'Found something? Click to Log a Bug ➔')
       )
     );
   }

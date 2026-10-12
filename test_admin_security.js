@@ -93,8 +93,9 @@ async function runSecurityTests() {
     }
     console.log('✓ [SECURITY] POST /api/admin/login with incorrect PIN rejected with 401 Unauthorized');
 
-    // 6. Admin Login with Correct PIN (admin123) must succeed and return a session token
-    const validLogin = await makeRequest(port, '/api/admin/login', 'POST', {}, { pin: 'admin123' });
+    // 6. Admin Login with Configured PIN must succeed and return a session token
+    const pinToTest = process.env.ADMIN_PIN || 'Sanket625';
+    const validLogin = await makeRequest(port, '/api/admin/login', 'POST', {}, { pin: pinToTest });
     if (validLogin.statusCode !== 200 || !validLogin.body.adminToken) {
       throw new Error('Admin login failed with correct PIN');
     }

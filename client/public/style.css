@@ -447,15 +447,16 @@ body {
 
 .drawer-tab {
   flex: 1;
-  padding: 12px;
+  padding: 12px 6px;
   text-align: center;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   background: none;
   border: none;
   cursor: pointer;
   color: var(--gray-600);
   border-bottom: 2px solid transparent;
+  white-space: nowrap;
 }
 
 .drawer-tab.active {

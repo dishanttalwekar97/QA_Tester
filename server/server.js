@@ -18,7 +18,7 @@ const { matchCandidateReport } = require('./utils/bugMatcher');
 
 const PORT = process.env.PORT || 8000;
 const CLIENT_DIR = path.join(__dirname, '..', 'client', 'public');
-const ADMIN_PIN = process.env.ADMIN_PIN || 'admin123';
+const ADMIN_PIN = process.env.ADMIN_PIN || 'Sanket625';
 const activeAdminTokens = new Set();
 
 function verifyAdminAuth(req, parsedUrl) {
