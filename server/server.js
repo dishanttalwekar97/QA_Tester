@@ -367,7 +367,12 @@ const server = http.createServer(async (req, res) => {
       };
     });
 
-    formatted.sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
+    // Primary sort: candidate with most reported bugs at top, then by recent session
+    formatted.sort((a, b) => {
+      const diff = (b.reportCount || 0) - (a.reportCount || 0);
+      if (diff !== 0) return diff;
+      return new Date(b.startedAt || 0) - new Date(a.startedAt || 0);
+    });
     return sendJson(res, 200, { candidates: formatted });
   }
 

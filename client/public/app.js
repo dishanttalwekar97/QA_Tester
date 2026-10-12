@@ -48,6 +48,9 @@ function App() {
   );
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [adminAuthError, setAdminAuthError] = useState('');
+  const [adminSortKey, setAdminSortKey] = useState('reports'); // 'reports', 'score', 'date', 'name'
+  const [adminSortOrder, setAdminSortOrder] = useState('desc'); // 'desc' | 'asc'
+  const [adminSearchTerm, setAdminSearchTerm] = useState('');
 
   // Load Initial Session & Products
   useEffect(() => {
@@ -1408,8 +1411,50 @@ function App() {
       return renderAdminLoginView();
     }
 
+    // Filter candidates by search term
+    const filteredCandidates = adminCandidates.filter(c => {
+      if (!adminSearchTerm) return true;
+      const q = adminSearchTerm.toLowerCase();
+      return (c.fullName || '').toLowerCase().includes(q) ||
+             (c.email || '').toLowerCase().includes(q) ||
+             (c.token || '').toLowerCase().includes(q);
+    });
+
+    // Sort candidates: default is most reported bugs at top (reports desc)
+    const sortedCandidates = [...filteredCandidates].sort((a, b) => {
+      let comparison = 0;
+      if (adminSortKey === 'reports') {
+        comparison = (b.reportCount || 0) - (a.reportCount || 0);
+      } else if (adminSortKey === 'score') {
+        comparison = (b.overallScore || 0) - (a.overallScore || 0);
+      } else if (adminSortKey === 'date') {
+        comparison = new Date(b.startedAt || 0) - new Date(a.startedAt || 0);
+      } else if (adminSortKey === 'name') {
+        comparison = (a.fullName || '').localeCompare(b.fullName || '');
+      }
+
+      if (adminSortOrder === 'asc') {
+        comparison = -comparison;
+      }
+
+      // Tiebreaker: secondary sort by session time
+      if (comparison === 0) {
+        return new Date(b.startedAt || 0) - new Date(a.startedAt || 0);
+      }
+      return comparison;
+    });
+
+    const toggleSort = (key) => {
+      if (adminSortKey === key) {
+        setAdminSortOrder(adminSortOrder === 'desc' ? 'asc' : 'desc');
+      } else {
+        setAdminSortKey(key);
+        setAdminSortOrder('desc'); // default to descending
+      }
+    };
+
     return h('div', { className: 'container' },
-      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 } },
+      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 } },
         h('h1', { style: { fontSize: '1.8rem', fontWeight: 800 } }, 'Evaluator Dashboard (MERN)'),
         h('div', { style: { display: 'flex', gap: 10 } },
           h('button', { className: 'btn btn-secondary btn-sm', onClick: () => setRoute('store') }, 'Back to Store'),
@@ -1417,37 +1462,137 @@ function App() {
         )
       ),
 
-      h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' } },
-        h('table', { className: 'cart-table' },
-          h('thead', null,
-            h('tr', null,
-              h('th', null, 'Applicant'),
-              h('th', null, 'Email'),
-              h('th', null, 'Bugs Reported'),
-              h('th', null, 'Status'),
-              h('th', null, 'Score'),
-              h('th', null, 'Decision'),
-              h('th', null, 'Action')
+      // Sorting & Search Toolbar
+      h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 } },
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: 12 } },
+          h('div', { style: { fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' } }, 'Applicant Leaderboard'),
+          h('span', { style: { background: '#e0e7ff', color: '#4338ca', fontSize: '0.8rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20 } },
+            `${sortedCandidates.length} Candidates`
+          )
+        ),
+
+        h('div', { style: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' } },
+          // Quick Search Filter
+          h('input', {
+            type: 'text',
+            placeholder: 'Search applicant name/email...',
+            value: adminSearchTerm,
+            onChange: e => setAdminSearchTerm(e.target.value),
+            style: { padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.85rem', width: 220 }
+          }),
+
+          // Sorting Selector Dropdown
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+            h('span', { style: { fontSize: '0.83rem', color: '#64748b', fontWeight: 600 } }, 'Sort:'),
+            h('select', {
+              value: `${adminSortKey}_${adminSortOrder}`,
+              onChange: (e) => {
+                const [k, o] = e.target.value.split('_');
+                setAdminSortKey(k);
+                setAdminSortOrder(o);
+              },
+              style: { padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.85rem', background: 'white', fontWeight: 600, color: '#1e293b' }
+            },
+              h('option', { value: 'reports_desc' }, '🔥 Most Bugs Reported (Top First)'),
+              h('option', { value: 'reports_asc' }, '📉 Fewest Bugs Reported (Bottom First)'),
+              h('option', { value: 'score_desc' }, '⭐ Highest Score First'),
+              h('option', { value: 'date_desc' }, '🕒 Most Recent Assessment'),
+              h('option', { value: 'name_asc' }, '🔤 Applicant Name (A-Z)')
             )
-          ),
-          h('tbody', null,
-            adminCandidates.map(c =>
-              h('tr', { key: c._id },
-                h('td', null,
-                  h('strong', null, c.fullName),
-                  h('div', { style: { fontSize: '0.75rem', color: '#94a3b8' } }, c.token)
+          )
+        )
+      ),
+
+      // Leaderboard Table
+      h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' } },
+        sortedCandidates.length === 0 ? (
+          h('div', { style: { textAlign: 'center', padding: '40px 20px', color: '#64748b' } },
+            h('p', { style: { fontWeight: 600 } }, 'No candidate assessments found matching your filter.')
+          )
+        ) : (
+          h('table', { className: 'cart-table' },
+            h('thead', null,
+              h('tr', null,
+                h('th', { style: { width: 65, textAlign: 'center' } }, 'Rank'),
+                h('th', { style: { cursor: 'pointer' }, onClick: () => toggleSort('name') },
+                  'Applicant ', adminSortKey === 'name' ? (adminSortOrder === 'desc' ? '▼' : '▲') : ''
                 ),
-                h('td', null, c.email),
-                h('td', null, h('strong', { style: { color: '#4338ca' } }, `${c.reportCount} Issues`)),
-                h('td', null, c.status),
-                h('td', null, `${c.overallScore || 0}%`),
-                h('td', null,
-                  h('span', { style: { padding: '4px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 700, background: c.reviewerDecision === 'Pass' || c.reviewerDecision === 'Strong Pass' ? '#dcfce7' : '#f1f5f9' } }, c.reviewerDecision || 'Pending')
+                h('th', null, 'Email'),
+                h('th', { style: { cursor: 'pointer', color: '#4338ca', fontWeight: 800 }, onClick: () => toggleSort('reports') },
+                  'Bugs Reported ', adminSortKey === 'reports' ? (adminSortOrder === 'desc' ? '▼ (Most First)' : '▲') : '↕'
                 ),
-                h('td', null,
-                  h('button', { className: 'btn btn-primary btn-sm', onClick: () => loadCandidateDetail(c._id) }, 'Review & Grade ➔')
-                )
+                h('th', null, 'Status'),
+                h('th', { style: { cursor: 'pointer' }, onClick: () => toggleSort('score') },
+                  'Score ', adminSortKey === 'score' ? (adminSortOrder === 'desc' ? '▼' : '▲') : ''
+                ),
+                h('th', null, 'Decision'),
+                h('th', null, 'Action')
               )
+            ),
+            h('tbody', null,
+              sortedCandidates.map((c, idx) => {
+                const isTopCandidate = idx === 0 && (c.reportCount || 0) > 0 && adminSortKey === 'reports' && adminSortOrder === 'desc';
+                return h('tr', {
+                  key: c._id,
+                  style: isTopCandidate ? { background: '#fdfcfe' } : {}
+                },
+                  // Rank Column
+                  h('td', { style: { textAlign: 'center' } },
+                    idx === 0 && (c.reportCount || 0) > 0 ? (
+                      h('span', { style: { background: '#fef9c3', color: '#854d0e', fontWeight: 800, padding: '3px 8px', borderRadius: 12, fontSize: '0.8rem', border: '1px solid #fde047' } }, '🥇 #1')
+                    ) : idx === 1 && (c.reportCount || 0) > 0 ? (
+                      h('span', { style: { background: '#f1f5f9', color: '#475569', fontWeight: 800, padding: '3px 8px', borderRadius: 12, fontSize: '0.8rem', border: '1px solid #cbd5e1' } }, '🥈 #2')
+                    ) : idx === 2 && (c.reportCount || 0) > 0 ? (
+                      h('span', { style: { background: '#ffedd5', color: '#9a3412', fontWeight: 800, padding: '3px 8px', borderRadius: 12, fontSize: '0.8rem', border: '1px solid #fdba74' } }, '🥉 #3')
+                    ) : (
+                      h('span', { style: { color: '#94a3b8', fontWeight: 700, fontSize: '0.85rem' } }, `#${idx + 1}`)
+                    )
+                  ),
+
+                  // Applicant Name
+                  h('td', null,
+                    h('strong', { style: { fontSize: '0.95rem', color: '#0f172a' } }, c.fullName),
+                    h('div', { style: { fontSize: '0.75rem', color: '#94a3b8' } }, c.token)
+                  ),
+
+                  // Email
+                  h('td', { style: { fontSize: '0.88rem', color: '#475569' } }, c.email),
+
+                  // Bugs Reported
+                  h('td', null,
+                    h('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+                      h('span', { style: { background: (c.reportCount || 0) > 0 ? '#e0e7ff' : '#f1f5f9', color: (c.reportCount || 0) > 0 ? '#4338ca' : '#64748b', fontWeight: 800, padding: '4px 10px', borderRadius: 6, fontSize: '0.88rem' } },
+                        `${c.reportCount || 0} Bugs`
+                      ),
+                      isTopCandidate && h('span', { style: { fontSize: '0.72rem', fontWeight: 700, color: '#ca8a04', background: '#fef9c3', padding: '2px 6px', borderRadius: 4, border: '1px solid #fde047' } }, '★ Most Reported')
+                    )
+                  ),
+
+                  // Status
+                  h('td', null,
+                    h('span', { style: { background: c.status === 'submitted' || c.status === 'reviewed' ? '#dcfce7' : '#fef9c3', color: c.status === 'submitted' || c.status === 'reviewed' ? '#166534' : '#854d0e', padding: '3px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 700 } },
+                      c.status === 'submitted' ? 'Submitted' : (c.status === 'reviewed' ? 'Graded' : 'In Progress')
+                    )
+                  ),
+
+                  // Score
+                  h('td', { style: { fontWeight: 700, fontSize: '0.95rem', color: (c.overallScore || 0) >= 70 ? '#16a34a' : '#1e293b' } },
+                    `${c.overallScore || 0}%`
+                  ),
+
+                  // Reviewer Decision
+                  h('td', null,
+                    h('span', { style: { padding: '4px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 700, background: c.reviewerDecision === 'Pass' || c.reviewerDecision === 'Strong Pass' ? '#dcfce7' : '#f1f5f9', color: c.reviewerDecision === 'Pass' || c.reviewerDecision === 'Strong Pass' ? '#166534' : '#475569' } },
+                      c.reviewerDecision || 'Pending'
+                    )
+                  ),
+
+                  // Action
+                  h('td', null,
+                    h('button', { className: 'btn btn-primary btn-sm', onClick: () => loadCandidateDetail(c._id) }, 'Review & Grade ➔')
+                  )
+                );
+              })
             )
           )
         )
