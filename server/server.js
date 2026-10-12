@@ -14,7 +14,7 @@ const Candidate = require('./models/Candidate');
 const BugReport = require('./models/BugReport');
 const { Product, Order } = require('./models/Product');
 const { collections } = require('./db/mongo');
-const { PRODUCTS, REVIEWS, SEEDED_BUGS } = require('./db/seedData');
+const { PRODUCTS, REVIEWS, SEEDED_BUGS, ORDERS, FAQS } = require('./db/seedData');
 const { matchCandidateReport } = require('./utils/bugMatcher');
 
 const PORT = process.env.PORT || 8000;
@@ -286,6 +286,27 @@ const server = http.createServer(async (req, res) => {
       total: body.total
     });
     return sendJson(res, 201, { success: true, orderId: order.orderId });
+  }
+
+  // 8b. Customer Orders List: GET /api/orders
+  if (pathname === '/api/orders' && method === 'GET') {
+    return sendJson(res, 200, { orders: ORDERS });
+  }
+
+  // 8c. Support FAQs: GET /api/faqs
+  if (pathname === '/api/faqs' && method === 'GET') {
+    return sendJson(res, 200, { faqs: FAQS });
+  }
+
+  // 8d. Support Ticket Submission: POST /api/support/ticket
+  if (pathname === '/api/support/ticket' && method === 'POST') {
+    const body = await parseJsonBody(req);
+    const ticketId = 'TKT-' + Math.floor(1000 + Math.random() * 9000);
+    return sendJson(res, 201, {
+      success: true,
+      ticketId,
+      message: 'Support ticket registered.'
+    });
   }
 
   // 9. Admin Login Authentication: POST /api/admin/login

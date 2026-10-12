@@ -1,5 +1,5 @@
 /**
- * Ground-Truth Master Catalog of 20 Seeded Bugs & Product Catalog
+ * Ground-Truth Master Catalog of 40 Seeded Bugs & Product Catalog
  */
 
 const SEEDED_BUGS = [
@@ -242,6 +242,246 @@ const SEEDED_BUGS = [
     actual: "Off-by-one index error deletes the preceding item in array.",
     keywords: ["remove item", "wrong item", "deletes first", "cart delete", "off-by-one", "second item"],
     points: 7
+  },
+  {
+    id: "BUG-021",
+    category: "Security",
+    severity: "Blocker",
+    title: "Password Change Allows 1-Character Password & Disregards Confirmation Mismatch",
+    description: "On the Profile page, the 'Change Password' form accepts a 1-character password (e.g. 'x') and successfully saves even when 'New Password' and 'Confirm Password' completely mismatch.",
+    triggerSteps: "1. Navigate to Profile page. 2. Under Change Password, enter current password, new password 'x', and confirm password '12345678'. 3. Click 'Update Password'. 4. System saves with success toast.",
+    expected: "Password must enforce minimum 8 characters and reject when confirmation password does not match.",
+    actual: "No minimum length validation or match comparison is executed; weak mismatched passwords are saved.",
+    keywords: ["password", "mismatch", "confirm password", "weak password", "1 character", "password length", "profile security"],
+    points: 10
+  },
+  {
+    id: "BUG-022",
+    category: "Input Validation",
+    severity: "Major",
+    title: "Profile Phone Number Field Accepts Alphabetic & Special Characters",
+    description: "The phone number input in User Profile accepts arbitrary letters and symbols (e.g. 'call-me-maybe-$$$') without numeric format validation.",
+    triggerSteps: "1. Go to Profile page. 2. In Phone Number, enter 'call-me-now!'. 3. Click 'Save Profile Changes'. 4. Profile updates with non-numeric phone.",
+    expected: "Phone number should only accept valid digits and standard telephone punctuation (+, -, ()).",
+    actual: "Accepts any arbitrary letters or symbols without validation.",
+    keywords: ["phone", "phone number", "letters", "alphabet", "invalid phone", "profile validation", "telephone"],
+    points: 7
+  },
+  {
+    id: "BUG-023",
+    category: "State Persistence",
+    severity: "Medium",
+    title: "Notification Settings Changes Silently Revert on Page Refresh",
+    description: "Toggling notification preferences (Email Notifications, SMS Alerts, Promotional Deals) displays a 'Saved successfully' toast, but navigating away or refreshing the page immediately resets toggles back to default.",
+    triggerSteps: "1. Go to Profile page. 2. Toggle 'SMS Order Alerts' ON and 'Promotional Deals' OFF. 3. Click Save. 4. Refresh page or return to Profile. 5. Toggles revert to defaults.",
+    expected: "Updated notification settings should persist across sessions and page navigation.",
+    actual: "Settings are not stored in state or persistence and revert on reload.",
+    keywords: ["notification", "toggle", "revert", "reset", "preferences", "sms alerts", "profile settings"],
+    points: 5
+  },
+  {
+    id: "BUG-024",
+    category: "Input Validation",
+    severity: "Major",
+    title: "Profile Email Update Accepts Invalid Format Without Domain",
+    description: "Updating the email address on the User Profile accepts malformed inputs like 'tester@' or 'myemail' without standard email regex validation.",
+    triggerSteps: "1. On Profile page, change email to 'student@'. 2. Click 'Save Profile Changes'. 3. Update succeeds without error.",
+    expected: "Email field must validate standard email syntax (user@domain.com).",
+    actual: "Form accepts strings lacking a valid domain or TLD.",
+    keywords: ["email", "invalid email", "malformed email", "no domain", "profile email", "email format"],
+    points: 7
+  },
+  {
+    id: "BUG-025",
+    category: "Usability",
+    severity: "Major",
+    title: "Danger 'Delete Account' Button Erases Account Instantly Without Confirmation Dialog",
+    description: "Clicking the red 'Delete Account' button on the Profile page immediately deletes session data without showing a confirmation prompt ('Are you sure?'), risking accidental data loss.",
+    triggerSteps: "1. Go to Profile page. 2. Click 'Delete Account' button. 3. Session is wiped immediately without warning modal.",
+    expected: "Destructive actions must require explicit two-step user confirmation before execution.",
+    actual: "Single click instantly deletes data without confirmation.",
+    keywords: ["delete account", "no confirmation", "accidental click", "warning prompt", "destructive", "profile delete"],
+    points: 7
+  },
+  {
+    id: "BUG-026",
+    category: "Data Consistency",
+    severity: "Major",
+    title: "Order Tracking Displays 'Delivered' With Impossible Future Delivery Date",
+    description: "In Order History, tracking for Order #ORD-8821 displays status badge 'Delivered' with a timestamp set in the year 2099 ('Delivered on December 31, 2099').",
+    triggerSteps: "1. Go to Order History page. 2. View tracking on Order #ORD-8821. 3. Note status 'Delivered' with date 'Dec 31, 2099'.",
+    expected: "Delivered orders must display past or current timestamps; future dates must indicate 'Scheduled' or 'In Transit'.",
+    actual: "Displays 'Delivered' alongside a date decades in the future.",
+    keywords: ["tracking", "delivered", "future date", "2099", "order date", "order history", "ord-8821"],
+    points: 7
+  },
+  {
+    id: "BUG-027",
+    category: "Usability",
+    severity: "Minor",
+    title: "Order Search Fails on Lowercase Tracking ID",
+    description: "Searching for orders by ID is strictly case-sensitive. Searching 'ord-9942' returns 'No orders found', whereas searching 'ORD-9942' succeeds.",
+    triggerSteps: "1. Go to Order History page. 2. In Order Search, type 'ord-9942' in lowercase. 3. Press Enter. 4. Shows 'No orders found'.",
+    expected: "Order search should perform case-insensitive matching (ord-9942 matches ORD-9942).",
+    actual: "Strict uppercase matching rejects lowercase tracking IDs.",
+    keywords: ["case sensitive", "lowercase", "order search", "tracking search", "order id", "ord-9942"],
+    points: 3
+  },
+  {
+    id: "BUG-028",
+    category: "Business Logic",
+    severity: "Blocker",
+    title: "Invoice Download Calculates Double Tax on Line Items",
+    description: "Clicking 'Download Invoice / Receipt' on an order displays an invoice breakdown where the 10% tax is added twice to the total (e.g. Subtotal $100 + Tax $10 + Extra Tax $10 = $120 total).",
+    triggerSteps: "1. Go to Orders page. 2. Click 'View Invoice' on any order. 3. Check tax and grand total calculation.",
+    expected: "Total must be Subtotal + 10% Tax + Shipping.",
+    actual: "Tax line item is compounded twice in invoice summary.",
+    keywords: ["invoice", "tax", "double tax", "receipt", "calculation", "order total", "overcharged"],
+    points: 10
+  },
+  {
+    id: "BUG-029",
+    category: "Business Logic",
+    severity: "Blocker",
+    title: "'Re-Order Items' Button Adds Products to Cart at $0.00 Price",
+    description: "Clicking 'Re-Order' on a past order in Order History adds the items into the active cart, but sets their unit price to $0.00 instead of their catalog price.",
+    triggerSteps: "1. Go to Order History. 2. Click 'Re-Order Items' on Order #ORD-9942. 3. Open Shopping Bag. 4. Observe items have $0.00 price.",
+    expected: "Re-ordered items should retain their legitimate catalog prices in the cart.",
+    actual: "Items are added with price reset to $0.00, enabling free checkout.",
+    keywords: ["reorder", "re-order", "$0.00", "free item", "price zero", "order history cart", "zero price"],
+    points: 10
+  },
+  {
+    id: "BUG-030",
+    category: "Navigation",
+    severity: "Medium",
+    title: "Order History 'Next Page' Button Increments Past Last Page into Blank Screen",
+    description: "In Order History, clicking 'Next Page >' when already on the last page increments the page counter indefinitely (e.g., Page 4 of 2), rendering an empty table without disabling the button.",
+    triggerSteps: "1. Go to Order History. 2. Navigate to Page 2. 3. Click 'Next Page >'. 4. Page counter becomes 'Page 3 of 2' and table is empty.",
+    expected: "Next button should be disabled when the user is on the final page (currentPage >= totalPages).",
+    actual: "Button remains clickable and increments page out of bounds.",
+    keywords: ["pagination", "next page", "out of bounds", "blank table", "page counter", "page 3 of 2"],
+    points: 5
+  },
+  {
+    id: "BUG-031",
+    category: "Input Validation",
+    severity: "Major",
+    title: "Support Ticket Submission Permits Completely Blank Inquiries",
+    description: "On the Customer Support page, the ticket submission form allows sending tickets with empty Subject and empty Message body.",
+    triggerSteps: "1. Go to Support page. 2. Leave Subject and Description blank. 3. Click 'Submit Ticket'. 4. Ticket is successfully recorded.",
+    expected: "Form must require non-empty Subject and Description with validation error feedback.",
+    actual: "Empty form submits without validation and creates a blank ticket.",
+    keywords: ["support ticket", "blank message", "empty subject", "required field", "support form", "no validation"],
+    points: 7
+  },
+  {
+    id: "BUG-032",
+    category: "Security",
+    severity: "Major",
+    title: "Ticket Attachment Accepts Executable Files (.exe, .sh) Without Validation",
+    description: "In the Customer Support ticket form, the file upload input accepts dangerous executable file extensions (.exe, .sh, .bat) without file type whitelisting.",
+    triggerSteps: "1. Go to Support page. 2. Attach a file named 'malware.exe' or 'script.sh'. 3. Observe file is accepted and attached without error.",
+    expected: "Attachment input should restrict files to safe document/image formats (PNG, JPG, PDF) using accept attribute and MIME validation.",
+    actual: "No file extension filter; any dangerous executable file is accepted.",
+    keywords: ["file upload", "attachment", ".exe", "executable", "file type", "support ticket upload", "security"],
+    points: 7
+  },
+  {
+    id: "BUG-033",
+    category: "Accessibility (a11y)",
+    severity: "Minor",
+    title: "Support FAQ Accordions Cannot Be Toggled via Keyboard (Enter/Space)",
+    description: "On the Support page, FAQ accordion question headers cannot be opened or closed using keyboard navigation (Enter or Space key) and lack aria-expanded attributes.",
+    triggerSteps: "1. Go to Support page. 2. Tab to an FAQ accordion item. 3. Press Enter or Space. 4. Accordion fails to open.",
+    expected: "Accordion triggers must support keyboard activation and communicate state with aria-expanded='true/false'.",
+    actual: "Accordion only responds to pointer click events and lacks ARIA attributes.",
+    keywords: ["faq", "accordion", "keyboard", "enter key", "space key", "aria-expanded", "a11y", "accessibility"],
+    points: 3
+  },
+  {
+    id: "BUG-034",
+    category: "Error Handling",
+    severity: "Major",
+    title: "Live Chat Message Exceeding 100 Characters Crashes Chat Window",
+    description: "In the Customer Support simulated live chat widget, typing and sending a message longer than 100 characters triggers an uncaught recursion error, crashing the chat window.",
+    triggerSteps: "1. Open Live Chat on Support page. 2. Type a message with 120 characters. 3. Press Send. 4. Chat component crashes with error.",
+    expected: "Long messages should wrap properly or be truncated with a character counter limit.",
+    actual: "Triggers maximum call stack or unhandled exception, breaking chat UI.",
+    keywords: ["live chat", "chat crash", "100 characters", "long message", "recursion", "support chat", "chat error"],
+    points: 7
+  },
+  {
+    id: "BUG-035",
+    category: "Visual UI",
+    severity: "Minor",
+    title: "Support Priority Badges Have Swapped Color Semantics (Urgent is Green, Low is Red)",
+    description: "On the Support page ticket priority picker, 'Urgent' priority displays a peaceful green badge (#22c55e) while 'Low' priority displays an alarming red badge (#ef4444).",
+    triggerSteps: "1. Go to Support page. 2. Inspect priority selection badges. 3. Observe 'Urgent' is green and 'Low' is red.",
+    expected: "Urgent priority should use alert colors (red/orange) and Low priority should use neutral/green colors.",
+    actual: "Color semantics are inverted.",
+    keywords: ["priority", "urgent", "color", "green", "red", "color inverted", "support ticket", "badge color"],
+    points: 3
+  },
+  {
+    id: "BUG-036",
+    category: "Business Logic",
+    severity: "Major",
+    title: "'Move All to Cart' from Wishlist Fails to Remove Items from Wishlist",
+    description: "Clicking 'Move All to Cart' on the Wishlist adds all saved items to the cart, but leaves them in the Wishlist instead of removing them, causing accidental re-purchases.",
+    triggerSteps: "1. Add 2 items to Wishlist. 2. Go to Wishlist page. 3. Click 'Move All to Cart'. 4. Observe items are added to cart but still exist in Wishlist.",
+    expected: "Moving items to cart should remove them from the Wishlist.",
+    actual: "Items are duplicated into the cart while lingering in the Wishlist.",
+    keywords: ["wishlist", "move all to cart", "duplicate", "not removed", "still in wishlist", "move to bag"],
+    points: 7
+  },
+  {
+    id: "BUG-037",
+    category: "Business Logic",
+    severity: "Major",
+    title: "Moving Out-of-Stock Product from Wishlist to Cart Bypasses Stock Check",
+    description: "Product #4 (Noise-Cancelling Headphones Pro) cannot be added to cart from the catalog due to 0 inventory, but if added to Wishlist, clicking 'Move to Cart' bypasses the check and successfully adds it to cart.",
+    triggerSteps: "1. Wishlist Product #4 (Headphones). 2. Go to Wishlist page. 3. Click 'Move to Cart' on Product #4. 4. Product is added to cart despite zero stock.",
+    expected: "Stock availability check must be enforced when transferring items from Wishlist to cart.",
+    actual: "Wishlist-to-cart action bypasses inventory validation.",
+    keywords: ["wishlist stock", "bypass stock", "out of stock", "headphones", "move to cart inventory", "zero stock bypass"],
+    points: 7
+  },
+  {
+    id: "BUG-038",
+    category: "Visual UI",
+    severity: "Minor",
+    title: "Navbar Wishlist Badge Counter Remains at 0 When Items Are Added",
+    description: "Adding products to the Wishlist fails to update the heart icon counter badge (🤍) in the top navbar, which remains stuck at 0.",
+    triggerSteps: "1. Click the heart icon on any product card to add to Wishlist. 2. Inspect the Wishlist count in the top navbar. 3. Badge remains at '0'.",
+    expected: "Navbar Wishlist badge should increment to reflect the count of saved wishlist items.",
+    actual: "Badge remains static at 0 regardless of saved items.",
+    keywords: ["wishlist badge", "counter", "navbar badge", "stuck at 0", "heart icon", "count not updating"],
+    points: 3
+  },
+  {
+    id: "BUG-039",
+    category: "Usability",
+    severity: "Medium",
+    title: "Wishlist 'Sort by Price' Performs Lexicographical String Sort Instead of Numeric Sort",
+    description: "Selecting 'Sort by Price: Low to High' on the Wishlist sorts prices as text strings ('$129.99', '$149.99', '$29.99', '$39.99', '$49.99', '$79.99', '$89.99'), placing $129 before $29 because '1' < '2'.",
+    triggerSteps: "1. Save products with prices $29.99 and $129.99 to Wishlist. 2. On Wishlist page, select 'Sort by Price: Low to High'. 3. Observe $129 appears before $29.",
+    expected: "Prices must be sorted numerically ($29.99 < $129.99).",
+    actual: "Sorted alphabetically/lexicographically as raw strings.",
+    keywords: ["sort by price", "alphabetical sort", "string sort", "lexicographical", "wishlist sorting", "129 before 29"],
+    points: 5
+  },
+  {
+    id: "BUG-040",
+    category: "State Management",
+    severity: "Medium",
+    title: "Removed Wishlist Items Reappear After Navigating to Store and Back",
+    description: "Clicking 'Remove' on an item in the Wishlist removes it visually from the list, but navigating to the Store page and returning to the Wishlist page resurrects the removed item.",
+    triggerSteps: "1. Have items in Wishlist. 2. Click 'Remove' on one item. 3. Navigate to Store page. 4. Return to Wishlist page. 5. Removed item reappears.",
+    expected: "Wishlist removal should persist in state across internal route navigation.",
+    actual: "State mutation is temporary and deleted items are restored on route change.",
+    keywords: ["wishlist remove", "item reappears", "resurrects", "state lost", "wishlist navigation", "deleted item returns"],
+    points: 5
   }
 ];
 
@@ -358,9 +598,78 @@ const REVIEWS = {
   ]
 };
 
+const ORDERS = [
+  {
+    id: "ORD-8821",
+    date: "2026-03-28",
+    status: "Delivered",
+    deliveryDate: "December 31, 2099", // BUG-026: Impossible future delivery date
+    items: [
+      { id: 1, name: "Aura Wireless Earbuds", price: 79.99, quantity: 1 },
+      { id: 8, name: "Fast Charging Pad Duo", price: 29.99, quantity: 1 }
+    ],
+    subtotal: 109.98,
+    tax: 11.00,
+    shipping: 0.00,
+    total: 120.98
+  },
+  {
+    id: "ORD-9942",
+    date: "2026-04-02",
+    status: "In Transit",
+    deliveryDate: "April 15, 2026",
+    items: [
+      { id: 2, name: "Ergonomic Vertical Mouse", price: 49.99, quantity: 1 }
+    ],
+    subtotal: 49.99,
+    tax: 5.00,
+    shipping: 10.00,
+    total: 64.99
+  },
+  {
+    id: "ORD-7715",
+    date: "2026-04-08",
+    status: "Processing",
+    deliveryDate: "April 20, 2026",
+    items: [
+      { id: 3, name: "Smart Fitness Watch Ultra", price: 129.99, quantity: 1 },
+      { id: 7, name: "Aluminum Laptop Stand", price: 39.99, quantity: 1 }
+    ],
+    subtotal: 169.98,
+    tax: 17.00,
+    shipping: 0.00,
+    total: 186.98
+  }
+];
+
+const FAQS = [
+  {
+    id: 1,
+    q: "How do I track my active shipment?",
+    a: "Orders can be tracked directly from the Order History page using your tracking ID (e.g. ORD-9942)."
+  },
+  {
+    id: 2,
+    q: "What is your 30-day return policy?",
+    a: "Returns are accepted within 30 days of confirmed delivery with original tags and packaging intact."
+  },
+  {
+    id: 3,
+    q: "How do promotional coupon codes work?",
+    a: "Coupons must be entered during checkout in the promo code input before clicking Place Order."
+  },
+  {
+    id: 4,
+    q: "Are all electronics covered by manufacturer warranty?",
+    a: "Yes, all ShopPulse studio hardware includes a 1-year limited hardware replacement warranty."
+  }
+];
+
 module.exports = {
   SEEDED_BUGS,
   PRODUCTS,
-  REVIEWS
+  REVIEWS,
+  ORDERS,
+  FAQS
 };
 

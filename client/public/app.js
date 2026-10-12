@@ -1,7 +1,7 @@
 /**
  * ShopPulse MERN Single Page Application (React Frontend)
  * Implements candidate exploratory testing, docked blind bug reporter,
- * and hiring evaluator dashboard with all 20 seeded bugs.
+ * and hiring evaluator dashboard with all 40 seeded bugs.
  */
 
 // Virtual Element helper for standalone React execution
@@ -9,12 +9,66 @@ const { useState, useEffect, useRef, createElement: h } = React;
 
 function App() {
   // Navigation & Session State
-  const [route, setRoute] = useState('brief'); // 'brief', 'store', 'cart', 'completed', 'admin', 'admin_detail'
+  const [route, setRoute] = useState('brief'); // 'brief', 'store', 'cart', 'profile', 'orders', 'support', 'wishlist', 'completed', 'admin', 'admin_detail'
   const [candidate, setCandidate] = useState(null);
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]); // BUG-011: in-memory only, lost on F5
   const [couponRate, setCouponRate] = useState(0); // BUG-002: stacks infinitely
   const [myReports, setMyReports] = useState([]);
+
+  // --- Profile Page State (BUG-021 to BUG-025) ---
+  const [profileData, setProfileData] = useState({
+    fullName: "Alex Morgan",
+    email: "alex.morgan@shoppulse.io",
+    phone: "+1 (555) 019-2834",
+    address: "742 Evergreen Terrace, Springfield, OR"
+  });
+  // BUG-023: Notification settings revert on reload/navigation
+  const [notificationSettings, setNotificationSettings] = useState({
+    emailAlerts: true,
+    smsAlerts: false,
+    promoDeals: true
+  });
+  const [passwordForm, setPasswordForm] = useState({
+    currentPass: '',
+    newPass: '',
+    confirmPass: ''
+  });
+
+  // --- Orders Page State (BUG-026 to BUG-030) ---
+  const [ordersList, setOrdersList] = useState([]);
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [orderPage, setOrderPage] = useState(1);
+  const [viewingInvoice, setViewingInvoice] = useState(null);
+  const [activeTrackingOrder, setActiveTrackingOrder] = useState(null);
+
+  // --- Support Page State (BUG-031 to BUG-035) ---
+  const [supportTicket, setSupportTicket] = useState({
+    name: 'Alex Morgan',
+    email: 'alex.morgan@shoppulse.io',
+    subject: '',
+    message: '',
+    priority: 'Normal', // 'Low', 'Normal', 'Urgent'
+    attachmentName: ''
+  });
+  const [openFaqIndex, setOpenFaqIndex] = useState(null);
+  const [faqsList, setFaqsList] = useState([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { sender: 'bot', text: 'Hello! I am PulseBot, your automated customer care agent. How may I assist you today?' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatCrashed, setChatCrashed] = useState(false);
+
+  // --- Wishlist Page State (BUG-036 to BUG-040) ---
+  const initialWishlistItems = [
+    { id: 1, name: 'Aura Wireless Earbuds', price: 79.99, image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop&q=80', stock: 24, category: 'Audio' },
+    { id: 3, name: 'Smart Fitness Watch Ultra', price: 129.99, image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80', stock: 8, category: 'Wearables' },
+    { id: 8, name: 'Fast Charging Pad Duo', price: 29.99, image: 'https://images.unsplash.com/photo-1622445262464-84b1456045b6?w=600&auto=format&fit=crop&q=80', stock: 15, category: 'Accessories' },
+    { id: 4, name: 'Noise-Cancelling Headphones Pro', price: 149.99, image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80', stock: 0, category: 'Audio' }
+  ];
+  const [wishlist, setWishlist] = useState(initialWishlistItems);
+  const [wishlistSort, setWishlistSort] = useState('default');
   
   // UI & Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,13 +111,26 @@ function App() {
   // Helper flag for submitted assessment
   const isSubmitted = Boolean(candidate && (candidate.status === 'submitted' || candidate.status === 'reviewed'));
 
-  // Route Protection: Prevent submitted candidates from navigating back to store or cart
+  // Route Protection: Prevent submitted candidates from navigating back to store, cart or testing views
+  const candidateTestingRoutes = ['store', 'cart', 'profile', 'orders', 'support', 'wishlist'];
   useEffect(() => {
-    if (isSubmitted && (route === 'store' || route === 'cart')) {
+    if (isSubmitted && candidateTestingRoutes.includes(route)) {
       showToast('Assessment already submitted. Store access is concluded.', 'info');
       setRoute('completed');
     }
   }, [route, isSubmitted]);
+
+  // Route listener for BUG-040 (Wishlist item resurrection) & BUG-023 (Notification preference reset)
+  useEffect(() => {
+    if (route === 'wishlist') {
+      // BUG-040: Removed wishlist item reappears after navigating to Store and returning to Wishlist!
+      setWishlist(initialWishlistItems);
+    }
+    if (route === 'profile') {
+      // BUG-023: Notification settings revert to default
+      setNotificationSettings({ emailAlerts: true, smsAlerts: false, promoDeals: true });
+    }
+  }, [route]);
 
   const heroSlides = [
     {
@@ -109,6 +176,8 @@ function App() {
     }
 
     loadProducts();
+    loadOrders();
+    loadFaqs();
   }, []);
 
   // Toast notification helper
@@ -124,6 +193,11 @@ function App() {
         if (data.candidate) {
           sessionStorage.setItem('qa_candidate_token', data.candidate.token);
           setCandidate(data.candidate);
+          setProfileData(prev => ({
+            ...prev,
+            fullName: data.candidate.fullName || prev.fullName,
+            email: data.candidate.email || prev.email
+          }));
           if (data.candidate.status === 'submitted' || data.candidate.status === 'reviewed') {
             setRoute('completed');
             showToast('This assessment has already been submitted.', 'info');
@@ -143,6 +217,24 @@ function App() {
       .then(res => res.json())
       .then(data => {
         if (data.products) setProducts(data.products);
+      })
+      .catch(() => {});
+  };
+
+  const loadOrders = () => {
+    fetch('/api/orders')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.orders) setOrdersList(data.orders);
+      })
+      .catch(() => {});
+  };
+
+  const loadFaqs = () => {
+    fetch('/api/faqs')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.faqs) setFaqsList(data.faqs);
       })
       .catch(() => {});
   };
@@ -489,6 +581,160 @@ function App() {
     }
   };
 
+  // --- Profile Page Handlers (BUG-021, BUG-022, BUG-023, BUG-024, BUG-025) ---
+  const handleUpdateProfile = (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const phoneVal = form.phone.value;
+    const emailVal = form.email.value;
+
+    // BUG-024: Accepts invalid email format without domain (e.g. 'student@' or 'alex')
+    // BUG-022: Accepts arbitrary letters and symbols in phone number without numeric check!
+    setProfileData({
+      fullName: form.fullName.value,
+      email: emailVal,
+      phone: phoneVal,
+      address: form.address.value
+    });
+    showToast('Profile information saved successfully!', 'success');
+  };
+
+  const handleSaveNotificationSettings = () => {
+    // BUG-023: Silently fails to persist to storage, reverting on page reload or re-visiting profile
+    showToast('Notification preferences updated successfully!', 'success');
+  };
+
+  const handleUpdatePassword = (e) => {
+    e.preventDefault();
+    const { newPass } = passwordForm;
+    // BUG-021: Allows 1-character password and ignores confirmation mismatch completely!
+    if (!newPass || newPass.length < 1) {
+      showToast('Please enter a new password.', 'error');
+      return;
+    }
+    setPasswordForm({ currentPass: '', newPass: '', confirmPass: '' });
+    showToast('Password updated successfully! (Security verified)', 'success');
+  };
+
+  const handleDeleteAccountImmediately = () => {
+    // BUG-025: Danger Delete Account executes instantly with NO confirmation dialog or warning modal!
+    sessionStorage.clear();
+    setCandidate(null);
+    setCart([]);
+    setRoute('brief');
+    showToast('Your account and candidate session have been deleted immediately.', 'error');
+  };
+
+  // --- Orders Page Handlers (BUG-026, BUG-027, BUG-028, BUG-029, BUG-030) ---
+  const handleReorderItems = (order) => {
+    order.items.forEach(item => {
+      setCart(prev => {
+        const existing = prev.find(p => p.id === item.id);
+        if (existing) {
+          // BUG-029: Price set to 0.00!
+          return prev.map(p => p.id === item.id ? { ...p, quantity: p.quantity + item.quantity, price: 0.00 } : p);
+        }
+        // BUG-029: Price set to 0.00!
+        return [...prev, { id: item.id, name: item.name, price: 0.00, stock: 99, quantity: item.quantity }];
+      });
+    });
+    showToast(`Order ${order.id} items re-added to Bag at $0.00 each!`, 'success');
+  };
+
+  // --- Support Page Handlers (BUG-031, BUG-032, BUG-033, BUG-034, BUG-035) ---
+  const handleSupportTicketSubmit = (e) => {
+    e.preventDefault();
+    // BUG-031: Allows submitting ticket even when subject and message are completely empty strings!
+    fetch('/api/support/ticket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(supportTicket)
+    })
+      .then(res => res.json())
+      .then(data => {
+        showToast(`Support Ticket #${data.ticketId || 'TKT-1082'} submitted successfully!`, 'success');
+        setSupportTicket({ name: profileData.fullName, email: profileData.email, subject: '', message: '', priority: 'Normal', attachmentName: '' });
+      })
+      .catch(() => {
+        showToast('Support Ticket submitted successfully!', 'success');
+      });
+  };
+
+  const handleSupportFileAttachment = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      // BUG-032: No accept check; permits .exe, .sh, .bat files
+      setSupportTicket(prev => ({ ...prev, attachmentName: file.name }));
+      showToast(`File "${file.name}" attached without restriction.`, 'info');
+    }
+  };
+
+  const handleSendChatMessage = (e) => {
+    if (e) e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    // BUG-034: Message > 100 characters triggers recursion / stack overflow crash!
+    if (chatInput.length > 100) {
+      setChatCrashed(true);
+      return;
+    }
+
+    const userText = chatInput;
+    setChatMessages(prev => [...prev, { sender: 'user', text: userText }]);
+    setChatInput('');
+    setTimeout(() => {
+      setChatMessages(prev => [...prev, {
+        sender: 'bot',
+        text: 'Thank you for reaching out! Our support team has logged your inquiry: "' + userText.slice(0, 32) + '..."'
+      }]);
+    }, 600);
+  };
+
+  // --- Wishlist Page Handlers (BUG-036, BUG-037, BUG-038, BUG-039, BUG-040) ---
+  const handleAddToWishlist = (product) => {
+    setWishlist(prev => {
+      if (prev.some(item => item.id === product.id)) {
+        showToast(`"${product.name}" is already in your Wishlist.`, 'info');
+        return prev;
+      }
+      showToast(`Added "${product.name}" to Wishlist. (Notice navbar counter remains 0)`, 'success');
+      return [...prev, product];
+    });
+  };
+
+  const handleMoveWishlistItemToCart = (product) => {
+    // BUG-037: Bypasses stock check completely, successfully adding Product #4 (stock 0) to cart!
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { id: product.id, name: product.name, price: product.price, stock: product.stock, quantity: 1 }];
+    });
+    setWishlist(prev => prev.filter(item => item.id !== product.id));
+    showToast(`Moved "${product.name}" to Shopping Bag!`, 'success');
+  };
+
+  const handleMoveAllWishlistToCart = () => {
+    wishlist.forEach(p => {
+      setCart(prev => {
+        const existing = prev.find(item => item.id === p.id);
+        if (existing) {
+          return prev.map(item => item.id === p.id ? { ...item, quantity: item.quantity + 1 } : item);
+        }
+        return [...prev, { id: p.id, name: p.name, price: p.price, stock: p.stock, quantity: 1 }];
+      });
+    });
+    // BUG-036: Deliberately fails to clear wishlist, duplicating items!
+    showToast(`All ${wishlist.length} items moved to your Shopping Bag!`, 'success');
+  };
+
+  const handleRemoveFromWishlist = (id) => {
+    // BUG-040: Removed item is filtered here, but reappears upon navigating to Store and back to Wishlist
+    setWishlist(prev => prev.filter(item => item.id !== id));
+    showToast('Item removed from Wishlist.', 'info');
+  };
+
   // Cart Calculations
   const calculateTotals = () => {
     let subtotal = 0;
@@ -643,11 +889,31 @@ function App() {
         candidate && !isSubmitted && h('button', {
           className: 'cliq-topbar-link',
           onClick: () => { setDrawerOpen(true); setDrawerTab('guide'); }
-        }, '🎯 4 Student Missions Checklist'),
+        }, '🎯 8 Student Missions Checklist'),
         h('button', {
           className: 'cliq-topbar-link',
           onClick: () => setRoute('brief')
         }, 'PRD Specifications'),
+        candidate && !isSubmitted && h('button', {
+          className: `cliq-topbar-link ${route === 'store' ? 'active' : ''}`,
+          onClick: () => setRoute('store')
+        }, '🛍️ Store'),
+        candidate && !isSubmitted && h('button', {
+          className: `cliq-topbar-link ${route === 'wishlist' ? 'active' : ''}`,
+          onClick: () => setRoute('wishlist')
+        }, '🤍 Wishlist'),
+        candidate && !isSubmitted && h('button', {
+          className: `cliq-topbar-link ${route === 'orders' ? 'active' : ''}`,
+          onClick: () => setRoute('orders')
+        }, '📦 Orders'),
+        candidate && !isSubmitted && h('button', {
+          className: `cliq-topbar-link ${route === 'profile' ? 'active' : ''}`,
+          onClick: () => setRoute('profile')
+        }, '👤 Profile'),
+        candidate && !isSubmitted && h('button', {
+          className: `cliq-topbar-link ${route === 'support' ? 'active' : ''}`,
+          onClick: () => setRoute('support')
+        }, '🎧 Support'),
         !candidate ? h('button', {
           className: 'cliq-topbar-link',
           onClick: () => {
@@ -675,7 +941,7 @@ function App() {
         !isSubmitted && h('button', {
           onClick: () => { setDrawerOpen(true); setDrawerTab('guide'); },
           style: { background: '#da1c5c', border: 'none', color: 'white', padding: '3px 10px', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }
-        }, '🎯 4 Student Missions Checklist'),
+        }, '🎯 8 Student Missions Checklist'),
         h('button', {
           onClick: () => setRoute('brief'),
           style: { background: 'none', border: 'none', color: '#93c5fd', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem' }
@@ -772,9 +1038,20 @@ function App() {
           }, '🔔'),
           h('button', {
             className: 'cliq-action-icon-btn',
-            title: 'Wishlist',
-            onClick: () => showToast('Wishlist: 0 items saved.', 'info')
-          }, '🤍'),
+            title: 'Wishlist (Saved Items)',
+            onClick: () => {
+              if (isSubmitted) {
+                showToast('Assessment submitted. Storefront is locked.', 'info');
+                setRoute('completed');
+              } else {
+                setRoute('wishlist');
+              }
+            }
+          },
+            '🤍',
+            // BUG-038: Navbar Wishlist badge counter remains permanently stuck at 0!
+            h('span', { className: 'cart-badge' }, 0)
+          ),
           h('button', {
             onClick: () => {
               if (candidate && (candidate.status === 'submitted' || candidate.status === 'reviewed')) {
@@ -794,16 +1071,65 @@ function App() {
       )
     ),
 
+    // Luxury Quick Navigation Strip
+    candidate && !isSubmitted && route !== 'admin' && route !== 'admin_detail' && h('nav', {
+      style: {
+        background: '#161619',
+        borderBottom: '1px solid #282830',
+        padding: '6px 32px',
+        display: 'flex',
+        gap: 10,
+        alignItems: 'center',
+        flexWrap: 'wrap'
+      }
+    },
+      h('span', { style: { color: '#888894', textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 1, fontWeight: 700 } }, 'Explore Portal:'),
+      [
+        { id: 'store', label: '🛍️ Storefront' },
+        { id: 'wishlist', label: '🤍 Wishlist' },
+        { id: 'orders', label: '📦 Orders & Tracking' },
+        { id: 'profile', label: '👤 Account Profile' },
+        { id: 'support', label: '🎧 Customer Support' },
+        { id: 'cart', label: `🛍️ Bag (${totalCartCount})` }
+      ].map(tab =>
+        h('button', {
+          key: tab.id,
+          onClick: () => setRoute(tab.id),
+          style: {
+            background: route === tab.id ? '#da1c5c' : '#222228',
+            color: route === tab.id ? '#ffffff' : '#d4d4dc',
+            border: route === tab.id ? '1px solid #da1c5c' : '1px solid #33333e',
+            borderRadius: 4,
+            padding: '4px 12px',
+            fontSize: '0.78rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }
+        }, tab.label)
+      )
+    ),
+
     // Main Content Switcher
     route === 'brief' && renderBriefView(),
     route === 'store' && renderStoreView(),
     route === 'cart' && renderCartView(),
+    route === 'profile' && renderProfileView(),
+    route === 'orders' && renderOrdersView(),
+    route === 'support' && renderSupportView(),
+    route === 'wishlist' && renderWishlistView(),
     route === 'completed' && renderCompletedView(),
     route === 'admin' && renderAdminDashboard(),
     route === 'admin_detail' && renderAdminCandidateDetail(),
 
     // Product Detail Modal
     activeProduct && renderProductModal(),
+
+    // Invoice Modal (BUG-028)
+    viewingInvoice && renderInvoiceModal(),
+
+    // Tracking Modal (BUG-026)
+    activeTrackingOrder && renderTrackingModal(),
 
     // Terms of Service Modal (BUG-017: ignores Esc, no aria-label on close)
     termsModalOpen && h('div', { className: 'modal-overlay' },
@@ -1030,7 +1356,7 @@ function App() {
           h('li', null, 'Order placement must be debounced to prevent duplicate submissions.')
         ),
         h('div', { style: { marginTop: 24, marginBottom: 24 } },
-          h('h4', { style: { fontSize: '1.1rem', fontWeight: 800, color: '#1e1b4b', marginBottom: 12 } }, '🎯 Your 4 Guided Student Testing Missions:'),
+          h('h4', { style: { fontSize: '1.1rem', fontWeight: 800, color: '#1e1b4b', marginBottom: 12 } }, '🎯 Your 8 Guided Student Testing Missions:'),
           h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 } },
             [
               {
@@ -1046,12 +1372,32 @@ function App() {
               {
                 icon: '📝',
                 title: 'Mission 3: Checkout & Form Validation',
-                desc: 'Test checkout inputs. What happens if you leave address blank? What if you enter an invalid email? Does card expiry accept future dates?'
+                desc: 'Test checkout inputs. What happens if you leave address blank? What if you enter an apostrophe in your name? Does card expiry accept future dates?'
               },
               {
                 icon: '⭐',
                 title: 'Mission 4: Product Popups & Reviews',
-                desc: 'Click products to view full specs. Check if price shows the $ symbol. Try opening Terms of Service and closing it with Esc key.'
+                desc: 'Click products to view full specs. Check if price shows the $ symbol. Try opening Terms of Service and closing it with Esc key. Test HTML tags in reviews.'
+              },
+              {
+                icon: '👤',
+                title: 'Mission 5: User Profile & Security',
+                desc: 'Update account details. Test password change with 1 character or mismatched confirmation. Test letters in the phone field, notification toggles, and instant account deletion.'
+              },
+              {
+                icon: '📦',
+                title: 'Mission 6: Orders, Tracking & Invoices',
+                desc: 'Check Order History. Inspect tracking timestamp on ORD-8821. Test lowercase tracking search. Check invoice tax calculation and Re-Order button prices.'
+              },
+              {
+                icon: '🎧',
+                title: 'Mission 7: Customer Support & Live Chat',
+                desc: 'Submit support tickets with blank text or .exe/.sh attachments. Test keyboard Enter/Space on FAQ accordions. Send a chat message longer than 100 characters.'
+              },
+              {
+                icon: '🤍',
+                title: 'Mission 8: Wishlist & Collections',
+                desc: 'Test Wishlist Move All to Bag, moving out-of-stock headphones to cart, navbar heart badge counter, alphabetical price sorting, and item removal persistence.'
               }
             ].map((m, idx) =>
               h('div', { key: idx, style: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 14 } },
@@ -1209,7 +1555,31 @@ function App() {
             filteredProducts.map(p =>
               h('div', { key: p.id, className: 'product-card' },
                 h('div', { className: 'product-img-wrap', onClick: () => setActiveProduct(p) },
-                  h('span', { className: 'badge-tag' }, p.category),
+                  h('button', {
+                    onClick: (e) => {
+                      e.stopPropagation();
+                      handleAddToWishlist(p);
+                    },
+                    title: 'Add to Wishlist',
+                    style: {
+                      position: 'absolute',
+                      top: 10,
+                      left: 10,
+                      background: 'rgba(255,255,255,0.9)',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: 30,
+                      height: 30,
+                      fontSize: '0.95rem',
+                      cursor: 'pointer',
+                      zIndex: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.15)'
+                    }
+                  }, '🤍'),
+                  h('span', { className: 'badge-tag', style: { left: 46 } }, p.category),
                   // BUG-006: Product #4 displays In Stock badge despite 0 stock
                   p.displayStockOverride ? (
                     h('span', { className: 'stock-tag-ok' }, p.displayStockOverride)
@@ -1472,6 +1842,712 @@ function App() {
     );
   }
 
+  // =========================================================================
+  // VIEW: USER PROFILE & SETTINGS (Hosts BUG-021 to BUG-025)
+  // =========================================================================
+  function renderProfileView() {
+    return h('div', { className: 'container', style: { maxWidth: 880 } },
+      h('div', { style: { marginBottom: 24 } },
+        h('h1', { style: { fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' } }, '👤 Account Profile & Security Settings'),
+        h('p', { style: { color: '#64748b', fontSize: '0.95rem', marginTop: 4 } },
+          'Manage your personal contact details, security credentials, and communication preferences.'
+        )
+      ),
+
+      // Section 1: Personal Information Card (BUG-022 & BUG-024)
+      h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: 24, marginBottom: 20 } },
+        h('h2', { style: { fontSize: '1.2rem', fontWeight: 700, marginBottom: 16, color: '#1e293b' } }, 'Personal Information'),
+        h('form', { onSubmit: handleUpdateProfile },
+          h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 } },
+            h('div', null,
+              h('label', { className: 'form-label' }, 'Full Name *'),
+              h('input', { name: 'fullName', className: 'form-control', defaultValue: profileData.fullName, required: true })
+            ),
+            h('div', null,
+              h('label', { className: 'form-label' }, 'Email Address *'),
+              // BUG-024: Accepts invalid email format without domain (e.g. 'student@')
+              h('input', { name: 'email', className: 'form-control', defaultValue: profileData.email, required: true }),
+              h('span', { style: { fontSize: '0.74rem', color: '#64748b' } }, 'Used for order receipts & login.')
+            ),
+            h('div', null,
+              h('label', { className: 'form-label' }, 'Phone Number *'),
+              // BUG-022: Accepts letters and special characters without numeric validation!
+              h('input', { name: 'phone', className: 'form-control', defaultValue: profileData.phone, required: true }),
+              h('span', { style: { fontSize: '0.74rem', color: '#64748b' } }, 'Standard phone format (e.g. +1 555-019-2834).')
+            ),
+            h('div', null,
+              h('label', { className: 'form-label' }, 'Shipping Address *'),
+              h('input', { name: 'address', className: 'form-control', defaultValue: profileData.address, required: true })
+            )
+          ),
+          h('button', { type: 'submit', className: 'btn btn-primary' }, 'Save Profile Changes')
+        )
+      ),
+
+      // Section 2: Change Password Card (BUG-021)
+      h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: 24, marginBottom: 20 } },
+        h('h2', { style: { fontSize: '1.2rem', fontWeight: 700, marginBottom: 8, color: '#1e293b' } }, 'Change Password'),
+        h('p', { style: { fontSize: '0.85rem', color: '#64748b', marginBottom: 16 } },
+          'Passwords must enforce a minimum of 8 characters and require matching confirmation.'
+        ),
+        h('form', { onSubmit: handleUpdatePassword },
+          h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 16 } },
+            h('div', null,
+              h('label', { className: 'form-label' }, 'Current Password *'),
+              h('input', {
+                type: 'password',
+                className: 'form-control',
+                value: passwordForm.currentPass,
+                onChange: e => setPasswordForm({ ...passwordForm, currentPass: e.target.value }),
+                placeholder: '••••••••',
+                required: true
+              })
+            ),
+            h('div', null,
+              h('label', { className: 'form-label' }, 'New Password *'),
+              // BUG-021: Allows 1-character password
+              h('input', {
+                type: 'password',
+                className: 'form-control',
+                value: passwordForm.newPass,
+                onChange: e => setPasswordForm({ ...passwordForm, newPass: e.target.value }),
+                placeholder: 'e.g. Secret@123',
+                required: true
+              })
+            ),
+            h('div', null,
+              h('label', { className: 'form-label' }, 'Confirm New Password *'),
+              // BUG-021: Disregards mismatch with newPass
+              h('input', {
+                type: 'password',
+                className: 'form-control',
+                value: passwordForm.confirmPass,
+                onChange: e => setPasswordForm({ ...passwordForm, confirmPass: e.target.value }),
+                placeholder: '••••••••',
+                required: true
+              })
+            )
+          ),
+          h('button', { type: 'submit', className: 'btn btn-primary' }, 'Update Password')
+        )
+      ),
+
+      // Section 3: Notification Preferences (BUG-023)
+      h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: 24, marginBottom: 20 } },
+        h('h2', { style: { fontSize: '1.2rem', fontWeight: 700, marginBottom: 8, color: '#1e293b' } }, 'Notification Preferences'),
+        h('p', { style: { fontSize: '0.85rem', color: '#64748b', marginBottom: 14 } },
+          'Choose how you would like to receive shipment updates and marketing alerts.'
+        ),
+        h('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 } },
+          h('label', { className: 'checkbox-item', style: { fontSize: '0.9rem' } },
+            h('input', {
+              type: 'checkbox',
+              checked: notificationSettings.emailAlerts,
+              onChange: e => setNotificationSettings({ ...notificationSettings, emailAlerts: e.target.checked })
+            }),
+            h('span', null, 'Email Notifications: Order confirmations, tracking updates, and account activity.')
+          ),
+          h('label', { className: 'checkbox-item', style: { fontSize: '0.9rem' } },
+            h('input', {
+              type: 'checkbox',
+              checked: notificationSettings.smsAlerts,
+              onChange: e => setNotificationSettings({ ...notificationSettings, smsAlerts: e.target.checked })
+            }),
+            h('span', null, 'SMS Order Alerts: Instant text alerts when orders are dispatched.')
+          ),
+          h('label', { className: 'checkbox-item', style: { fontSize: '0.9rem' } },
+            h('input', {
+              type: 'checkbox',
+              checked: notificationSettings.promoDeals,
+              onChange: e => setNotificationSettings({ ...notificationSettings, promoDeals: e.target.checked })
+            }),
+            h('span', null, 'Promotional Deals: Exclusive discounts, weekly drops, and flash clearance coupons.')
+          )
+        ),
+        // BUG-023: Shows success toast, but values silently revert on page refresh or navigation
+        h('button', {
+          type: 'button',
+          className: 'btn btn-secondary',
+          onClick: handleSaveNotificationSettings
+        }, 'Save Notification Preferences')
+      ),
+
+      // Section 4: Danger Zone (BUG-025)
+      h('div', { style: { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: 24 } },
+        h('h2', { style: { fontSize: '1.15rem', fontWeight: 800, color: '#991b1b', marginBottom: 6 } }, '⚠️ Danger Zone'),
+        h('p', { style: { fontSize: '0.85rem', color: '#7f1d1d', marginBottom: 16 } },
+          'Deleting your account will permanently wipe your session and candidate test records. This action cannot be reversed.'
+        ),
+        // BUG-025: Wipes account immediately on single click with NO confirmation dialog!
+        h('button', {
+          type: 'button',
+          className: 'btn btn-danger',
+          onClick: handleDeleteAccountImmediately
+        }, 'Delete Account Immediately')
+      )
+    );
+  }
+
+  // =========================================================================
+  // VIEW: ORDER HISTORY & TRACKING (Hosts BUG-026 to BUG-030)
+  // =========================================================================
+  function renderOrdersView() {
+    const ordersPerPage = 2;
+    // BUG-027: Strictly case-sensitive search filter!
+    const filtered = ordersList.filter(o => {
+      if (!orderSearchQuery.trim()) return true;
+      return o.id.includes(orderSearchQuery.trim());
+    });
+
+    const totalPages = Math.ceil(filtered.length / ordersPerPage) || 1;
+    // BUG-030: Slicing with orderPage when out-of-bounds yields []
+    const paged = filtered.slice((orderPage - 1) * ordersPerPage, orderPage * ordersPerPage);
+
+    return h('div', { className: 'container', style: { maxWidth: 960 } },
+      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 } },
+        h('div', null,
+          h('h1', { style: { fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' } }, '📦 Order History & Real-Time Tracking'),
+          h('p', { style: { color: '#64748b', fontSize: '0.95rem', marginTop: 4 } },
+            'Review past purchases, check real-time courier tracking, view tax invoices, or re-order past items.'
+          )
+        ),
+        h('div', { style: { width: 300 } },
+          // BUG-027: Strictly case-sensitive search
+          h('input', {
+            className: 'form-control',
+            placeholder: 'Search Order ID (e.g. ORD-9942)...',
+            value: orderSearchQuery,
+            onChange: e => { setOrderSearchQuery(e.target.value); setOrderPage(1); }
+          })
+        )
+      ),
+
+      // Orders Table Card
+      h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', marginBottom: 20 } },
+        h('table', { style: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' } },
+          h('thead', { style: { background: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
+            h('tr', null,
+              h('th', { style: { padding: '14px 18px', fontWeight: 700, color: '#475569' } }, 'Order ID'),
+              h('th', { style: { padding: '14px 18px', fontWeight: 700, color: '#475569' } }, 'Date'),
+              h('th', { style: { padding: '14px 18px', fontWeight: 700, color: '#475569' } }, 'Items'),
+              h('th', { style: { padding: '14px 18px', fontWeight: 700, color: '#475569' } }, 'Total'),
+              h('th', { style: { padding: '14px 18px', fontWeight: 700, color: '#475569' } }, 'Status'),
+              h('th', { style: { padding: '14px 18px', fontWeight: 700, color: '#475569', textAlign: 'right' } }, 'Actions')
+            )
+          ),
+          h('tbody', null,
+            paged.length === 0 ? (
+              h('tr', null,
+                h('td', { colSpan: 6, style: { padding: 40, textAlign: 'center', color: '#94a3b8' } },
+                  orderSearchQuery ? `No orders found matching "${orderSearchQuery}". (Check exact case)` : 'No orders on this page.'
+                )
+              )
+            ) : (
+              paged.map(ord =>
+                h('tr', { key: ord.id, style: { borderBottom: '1px solid #f1f5f9' } },
+                  h('td', { style: { padding: '16px 18px', fontWeight: 700, color: '#1e1b4b' } }, ord.id),
+                  h('td', { style: { padding: '16px 18px', color: '#64748b' } }, ord.date),
+                  h('td', { style: { padding: '16px 18px' } },
+                    h('div', { style: { fontWeight: 600 } }, `${ord.items.length} Product(s)`),
+                    h('div', { style: { fontSize: '0.78rem', color: '#64748b' } },
+                      ord.items.map(it => `${it.name} (x${it.quantity})`).join(', ')
+                    )
+                  ),
+                  h('td', { style: { padding: '16px 18px', fontWeight: 700, color: '#0f172a' } }, `$${ord.total.toFixed(2)}`),
+                  h('td', { style: { padding: '16px 18px' } },
+                    h('span', {
+                      style: {
+                        display: 'inline-block',
+                        padding: '3px 10px',
+                        borderRadius: 20,
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        background: ord.status === 'Delivered' ? '#dcfce7' : ord.status === 'In Transit' ? '#e0e7ff' : '#fef3c7',
+                        color: ord.status === 'Delivered' ? '#15803d' : ord.status === 'In Transit' ? '#4338ca' : '#b45309'
+                      }
+                    }, ord.status),
+                    // BUG-026 hint in tracking
+                    ord.status === 'Delivered' && h('div', { style: { fontSize: '0.72rem', color: '#16a34a', marginTop: 2 } },
+                      `Delivered: ${ord.deliveryDate}`
+                    )
+                  ),
+                  h('td', { style: { padding: '16px 18px', textAlign: 'right' } },
+                    h('div', { style: { display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' } },
+                      h('button', {
+                        className: 'btn btn-secondary btn-sm',
+                        style: { padding: '4px 8px', fontSize: '0.75rem' },
+                        onClick: () => setActiveTrackingOrder(ord)
+                      }, '📍 Track'),
+                      h('button', {
+                        className: 'btn btn-secondary btn-sm',
+                        style: { padding: '4px 8px', fontSize: '0.75rem' },
+                        onClick: () => setViewingInvoice(ord)
+                      }, '📄 Invoice'),
+                      // BUG-029: Re-order items adds items with $0.00 price
+                      h('button', {
+                        className: 'btn btn-primary btn-sm',
+                        style: { padding: '4px 8px', fontSize: '0.75rem' },
+                        onClick: () => handleReorderItems(ord)
+                      }, '🔁 Re-Order')
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      ),
+
+      // Pagination Controls (BUG-030)
+      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' } },
+        h('button', {
+          className: 'btn btn-secondary btn-sm',
+          disabled: orderPage <= 1,
+          onClick: () => setOrderPage(p => Math.max(1, p - 1))
+        }, '◀ Previous Page'),
+        h('span', { style: { fontSize: '0.88rem', fontWeight: 600, color: '#475569' } },
+          `Page ${orderPage} of ${totalPages}`
+        ),
+        // BUG-030: Next button is NEVER disabled, incrementing past totalPages into blank screen!
+        h('button', {
+          className: 'btn btn-secondary btn-sm',
+          onClick: () => setOrderPage(p => p + 1)
+        }, 'Next Page ▶')
+      )
+    );
+  }
+
+  // =========================================================================
+  // MODAL: INVOICE DOWNLOAD & RECEIPT (Hosts BUG-028: Double Tax Calculation)
+  // =========================================================================
+  function renderInvoiceModal() {
+    if (!viewingInvoice) return null;
+    const inv = viewingInvoice;
+    // BUG-028: Invoice compounds tax twice!
+    const doubleTaxTotal = inv.subtotal + (inv.tax * 2) + inv.shipping;
+
+    return h('div', { className: 'modal-overlay' },
+      h('div', { className: 'modal-dialog', style: { width: 560 } },
+        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 } },
+          h('h3', { style: { fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' } }, `Official Tax Invoice #${inv.id}`),
+          h('button', {
+            onClick: () => setViewingInvoice(null),
+            style: { background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#64748b' }
+          }, '✕')
+        ),
+
+        h('div', { style: { fontSize: '0.85rem', color: '#475569', marginBottom: 16, borderBottom: '1px solid #e2e8f0', paddingBottom: 12 } },
+          h('div', null, h('strong', null, 'Billed To: '), profileData.fullName),
+          h('div', null, h('strong', null, 'Order Date: '), inv.date),
+          h('div', null, h('strong', null, 'Payment Status: '), 'Paid in Full (Card)')
+        ),
+
+        // Items Breakdown
+        h('table', { style: { width: '100%', fontSize: '0.84rem', borderCollapse: 'collapse', marginBottom: 16 } },
+          h('thead', { style: { background: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
+            h('tr', null,
+              h('th', { style: { padding: 6, textAlign: 'left' } }, 'Description'),
+              h('th', { style: { padding: 6, textAlign: 'center' } }, 'Qty'),
+              h('th', { style: { padding: 6, textAlign: 'right' } }, 'Unit Price'),
+              h('th', { style: { padding: 6, textAlign: 'right' } }, 'Total')
+            )
+          ),
+          h('tbody', null,
+            inv.items.map((it, idx) =>
+              h('tr', { key: idx, style: { borderBottom: '1px solid #f1f5f9' } },
+                h('td', { style: { padding: 6 } }, it.name),
+                h('td', { style: { padding: 6, textAlign: 'center' } }, it.quantity),
+                h('td', { style: { padding: 6, textAlign: 'right' } }, `$${it.price.toFixed(2)}`),
+                h('td', { style: { padding: 6, textAlign: 'right', fontWeight: 600 } }, `$${(it.price * it.quantity).toFixed(2)}`)
+              )
+            )
+          )
+        ),
+
+        // Cost Calculation Box (BUG-028)
+        h('div', { style: { background: '#f8fafc', borderRadius: 8, padding: 14, fontSize: '0.85rem' } },
+          h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 6 } },
+            h('span', null, 'Subtotal:'),
+            h('span', { fontWeight: 600 }, `$${inv.subtotal.toFixed(2)}`)
+          ),
+          h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 6 } },
+            h('span', null, 'Standard Sales Tax (10%):'),
+            h('span', null, `$${inv.tax.toFixed(2)}`)
+          ),
+          // BUG-028: Tax added a second time as "Regional Processing Surcharge"
+          h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#dc2626' } },
+            h('span', null, 'Regional Processing Tax (10% - Double Counted):'),
+            h('span', null, `$${inv.tax.toFixed(2)}`)
+          ),
+          h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 6 } },
+            h('span', null, 'Shipping & Handling:'),
+            h('span', null, `$${inv.shipping.toFixed(2)}`)
+          ),
+          h('div', { style: { display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #e2e8f0', paddingTop: 8, fontWeight: 800, fontSize: '0.98rem', color: '#1e1b4b' } },
+            h('span', null, 'Invoice Grand Total:'),
+            h('span', null, `$${doubleTaxTotal.toFixed(2)}`)
+          )
+        ),
+
+        h('div', { style: { marginTop: 20, display: 'flex', gap: 10, justifyContent: 'flex-end' } },
+          h('button', {
+            className: 'btn btn-primary btn-sm',
+            onClick: () => showToast(`Invoice #${inv.id} downloaded successfully!`, 'success')
+          }, '⬇ Download PDF Receipt'),
+          h('button', {
+            className: 'btn btn-secondary btn-sm',
+            onClick: () => setViewingInvoice(null)
+          }, 'Close')
+        )
+      )
+    );
+  }
+
+  // =========================================================================
+  // MODAL: SHIPMENT TRACKING (Hosts BUG-026: Impossible Year 2099 Delivery)
+  // =========================================================================
+  function renderTrackingModal() {
+    if (!activeTrackingOrder) return null;
+    const ord = activeTrackingOrder;
+
+    return h('div', { className: 'modal-overlay' },
+      h('div', { className: 'modal-dialog', style: { width: 500 } },
+        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 } },
+          h('h3', { style: { fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' } }, `Shipment Tracking: #${ord.id}`),
+          h('button', {
+            onClick: () => setActiveTrackingOrder(null),
+            style: { background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#64748b' }
+          }, '✕')
+        ),
+
+        // Courier Details
+        h('div', { style: { background: '#f8fafc', padding: 14, borderRadius: 8, marginBottom: 18, fontSize: '0.85rem' } },
+          h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 4 } },
+            h('span', { color: '#64748b' }, 'Carrier:'),
+            h('strong', null, 'ShopPulse Express Courier')
+          ),
+          h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 4 } },
+            h('span', { color: '#64748b' }, 'Current Status:'),
+            h('span', { style: { fontWeight: 700, color: '#16a34a' } }, ord.status)
+          ),
+          // BUG-026: Order #ORD-8821 tracking shows "Delivered on December 31, 2099"
+          h('div', { style: { display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontWeight: 700 } },
+            h('span', null, 'Delivery Timestamp:'),
+            h('span', null, ord.deliveryDate)
+          )
+        ),
+
+        // Tracking Stepper
+        h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14, margin: '20px 10px' } },
+          [
+            { title: 'Order Confirmed', time: 'March 28, 2026', done: true },
+            { title: 'Package Packed & Dispatched', time: 'March 29, 2026', done: true },
+            { title: 'In Transit - Local Hub', time: 'March 30, 2026', done: true },
+            { title: `Delivered (${ord.deliveryDate})`, time: ord.deliveryDate, done: ord.status === 'Delivered', active: true }
+          ].map((st, i) =>
+            h('div', { key: i, style: { display: 'flex', gap: 12, alignItems: 'center' } },
+              h('div', {
+                style: {
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  background: st.done ? '#16a34a' : '#cbd5e1',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.75rem',
+                  fontWeight: 800
+                }
+              }, st.done ? '✓' : i + 1),
+              h('div', null,
+                h('div', { style: { fontWeight: 700, fontSize: '0.85rem', color: st.active ? '#16a34a' : '#1e293b' } }, st.title),
+                h('div', { style: { fontSize: '0.74rem', color: '#64748b' } }, st.time)
+              )
+            )
+          )
+        ),
+
+        h('div', { style: { marginTop: 24, textAlign: 'right' } },
+          h('button', {
+            className: 'btn btn-secondary btn-sm',
+            onClick: () => setActiveTrackingOrder(null)
+          }, 'Close')
+        )
+      )
+    );
+  }
+
+  // =========================================================================
+  // VIEW: CUSTOMER SUPPORT & HELP CENTER (Hosts BUG-031 to BUG-035)
+  // =========================================================================
+  function renderSupportView() {
+    return h('div', { className: 'container', style: { maxWidth: 1040 } },
+      h('div', { style: { marginBottom: 24 } },
+        h('h1', { style: { fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' } }, '🎧 Customer Support & Live Help Center'),
+        h('p', { style: { color: '#64748b', fontSize: '0.95rem', marginTop: 4 } },
+          'Open a support ticket, chat with our automated support bot, or browse frequent questions.'
+        )
+      ),
+
+      h('div', { style: { display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 24, alignItems: 'start' } },
+        // Left Column: Submit Ticket Form
+        h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: 24 } },
+          h('h2', { style: { fontSize: '1.2rem', fontWeight: 700, marginBottom: 14, color: '#1e293b' } }, 'Submit an Inquiry Ticket'),
+          h('form', { onSubmit: handleSupportTicketSubmit },
+            // Priority Badges (BUG-035: Inverted Colors - Urgent is Green, Low is Red)
+            h('div', { style: { marginBottom: 16 } },
+              h('label', { className: 'form-label', style: { marginBottom: 8 } }, 'Ticket Priority Level *'),
+              h('div', { style: { display: 'flex', gap: 10 } },
+                ['Low', 'Normal', 'Urgent'].map(p => {
+                  let color = '#3b82f6';
+                  // BUG-035: Inverted color semantics!
+                  if (p === 'Urgent') color = '#22c55e'; // Green for Urgent!
+                  if (p === 'Low') color = '#ef4444'; // Red for Low!
+                  const isSel = supportTicket.priority === p;
+                  return h('button', {
+                    key: p,
+                    type: 'button',
+                    onClick: () => setSupportTicket({ ...supportTicket, priority: p }),
+                    style: {
+                      background: isSel ? color : '#f8fafc',
+                      color: isSel ? 'white' : color,
+                      border: `2px solid ${color}`,
+                      borderRadius: 20,
+                      padding: '5px 14px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }
+                  }, `${p} Priority`);
+                })
+              )
+            ),
+
+            // Subject (BUG-031: Allows blank)
+            h('div', { className: 'form-group', style: { marginBottom: 14 } },
+              h('label', { className: 'form-label' }, 'Subject *'),
+              h('input', {
+                name: 'subject',
+                className: 'form-control',
+                placeholder: 'e.g. Order #ORD-8821 tracking question...',
+                value: supportTicket.subject,
+                onChange: e => setSupportTicket({ ...supportTicket, subject: e.target.value })
+              })
+            ),
+
+            // Message (BUG-031: Allows blank)
+            h('div', { className: 'form-group', style: { marginBottom: 14 } },
+              h('label', { className: 'form-label' }, 'Message Description *'),
+              h('textarea', {
+                name: 'message',
+                className: 'form-control',
+                rows: 4,
+                placeholder: 'Please provide full details of your question or issue...',
+                value: supportTicket.message,
+                onChange: e => setSupportTicket({ ...supportTicket, message: e.target.value })
+              })
+            ),
+
+            // File Attachment (BUG-032: No accept attribute, allows dangerous .exe, .sh)
+            h('div', { className: 'form-group', style: { marginBottom: 18 } },
+              h('label', { className: 'form-label' }, 'Attach Diagnostic Log / Screenshot (Optional)'),
+              h('input', {
+                type: 'file',
+                className: 'form-control',
+                onChange: handleSupportFileAttachment
+                // BUG-032: Missing accept="image/*,application/pdf"
+              }),
+              supportTicket.attachmentName && h('div', { style: { fontSize: '0.78rem', color: '#16a34a', marginTop: 4, fontWeight: 600 } },
+                `✓ Attached file: ${supportTicket.attachmentName}`
+              )
+            ),
+
+            h('button', { type: 'submit', className: 'btn btn-primary btn-block' }, '🚀 Submit Support Ticket')
+          )
+        ),
+
+        // Right Column: Live Chat & FAQ
+        h('div', { style: { display: 'flex', flexDirection: 'column', gap: 20 } },
+          // Live Chat Widget (BUG-034: >100 characters triggers crash)
+          h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' } },
+            h('div', { style: { background: '#0e0e10', color: 'white', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+              h('div', { style: { fontWeight: 700, fontSize: '0.9rem' } }, '💬 PulseBot Live Support'),
+              h('span', { style: { fontSize: '0.72rem', background: '#22c55e', color: 'white', padding: '2px 8px', borderRadius: 10, fontWeight: 700 } }, '● Online')
+            ),
+
+            chatCrashed ? (
+              // BUG-034: Simulated crash box
+              h('div', { style: { padding: 18, background: '#fee2e2', color: '#991b1b' } },
+                h('div', { style: { fontWeight: 800, fontSize: '0.9rem', marginBottom: 6 } }, '⚠️ Uncaught RangeError: Maximum call stack size exceeded'),
+                h('pre', { style: { fontSize: '0.72rem', background: '#fecaca', padding: 8, borderRadius: 4, overflowX: 'auto' } },
+                  'at renderChatStream (app.js:1420)\nat Object.dispatch (react.development.js:1630)\nat handleSendChatMessage (app.js:612)'
+                ),
+                h('p', { style: { fontSize: '0.78rem', marginTop: 8 } }, 'The live chat worker thread crashed due to unbounded recursion on messages > 100 characters.'),
+                h('button', {
+                  className: 'btn btn-secondary btn-sm',
+                  style: { marginTop: 10 },
+                  onClick: () => { setChatCrashed(false); setChatInput(''); }
+                }, 'Reboot Chat Session')
+              )
+            ) : (
+              h('div', null,
+                h('div', { style: { height: 180, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, background: '#f8fafc' } },
+                  chatMessages.map((m, idx) =>
+                    h('div', {
+                      key: idx,
+                      style: {
+                        alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start',
+                        maxWidth: '82%',
+                        background: m.sender === 'user' ? '#da1c5c' : '#ffffff',
+                        color: m.sender === 'user' ? '#ffffff' : '#1e293b',
+                        padding: '8px 12px',
+                        borderRadius: 8,
+                        fontSize: '0.82rem',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                        border: m.sender === 'user' ? 'none' : '1px solid #e2e8f0'
+                      }
+                    }, m.text)
+                  )
+                ),
+                h('form', { onSubmit: handleSendChatMessage, style: { display: 'flex', borderTop: '1px solid #e2e8f0' } },
+                  h('input', {
+                    style: { flex: 1, border: 'none', padding: '10px 14px', fontSize: '0.82rem', outline: 'none' },
+                    placeholder: 'Type message... (Max 100 chars)',
+                    value: chatInput,
+                    onChange: e => setChatInput(e.target.value)
+                  }),
+                  h('button', {
+                    type: 'submit',
+                    style: { background: '#da1c5c', color: 'white', border: 'none', padding: '0 16px', fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem' }
+                  }, 'Send')
+                )
+              )
+            )
+          ),
+
+          // FAQ Accordion (BUG-033: Cannot toggle via keyboard, lacks aria-expanded)
+          h('div', { style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: 18 } },
+            h('h3', { style: { fontSize: '1.05rem', fontWeight: 700, marginBottom: 12, color: '#1e293b' } }, 'Frequently Asked Questions'),
+            h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+              faqsList.map((faq, idx) => {
+                const isOpen = openFaqIndex === idx;
+                return h('div', { key: faq.id || idx, style: { border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' } },
+                  // BUG-033: Clickable div without keyboard listener or aria-expanded
+                  h('div', {
+                    onClick: () => setOpenFaqIndex(isOpen ? null : idx),
+                    style: { padding: '10px 14px', background: '#f8fafc', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.84rem', fontWeight: 600, color: '#1e293b' }
+                  },
+                    h('span', null, faq.q),
+                    h('span', { style: { fontSize: '0.75rem', color: '#64748b' } }, isOpen ? '▲' : '▼')
+                  ),
+                  isOpen && h('div', { style: { padding: '10px 14px', fontSize: '0.82rem', color: '#475569', background: 'white', borderTop: '1px solid #f1f5f9', lineHeight: 1.5 } },
+                    faq.a
+                  )
+                );
+              })
+            )
+          )
+        )
+      )
+    );
+  }
+
+  // =========================================================================
+  // VIEW: WISHLIST & SAVED PICKS (Hosts BUG-036 to BUG-040)
+  // =========================================================================
+  function renderWishlistView() {
+    // BUG-039: Sorts by price as text string for 'price-asc'
+    const sorted = [...wishlist].sort((a, b) => {
+      if (wishlistSort === 'price-asc') {
+        // BUG-039: Lexicographical string sort on '$' + price!
+        return ('$' + a.price).localeCompare('$' + b.price);
+      }
+      if (wishlistSort === 'price-desc') {
+        return b.price - a.price;
+      }
+      return 0;
+    });
+
+    return h('div', { className: 'container', style: { maxWidth: 1040 } },
+      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 } },
+        h('div', null,
+          h('h1', { style: { fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' } }, '🤍 Wishlist & Saved Collections'),
+          h('p', { style: { color: '#64748b', fontSize: '0.95rem', marginTop: 4 } },
+            `Saved Items (${wishlist.length} products). Items saved for future orders.`
+          )
+        ),
+        h('div', { style: { display: 'flex', gap: 10, alignItems: 'center' } },
+          // BUG-039: Sort dropdown
+          h('select', {
+            className: 'form-control',
+            value: wishlistSort,
+            onChange: e => setWishlistSort(e.target.value),
+            style: { width: 220, fontSize: '0.85rem' }
+          },
+            h('option', { value: 'default' }, 'Sort by: Default'),
+            h('option', { value: 'price-asc' }, 'Sort by Price: Low to High'),
+            h('option', { value: 'price-desc' }, 'Sort by Price: High to Low')
+          ),
+          // BUG-036: Move all to cart leaves items in wishlist!
+          h('button', {
+            className: 'btn btn-primary',
+            onClick: handleMoveAllWishlistToCart,
+            disabled: wishlist.length === 0
+          }, '🛍️ Move All to Bag')
+        )
+      ),
+
+      wishlist.length === 0 ? (
+        h('div', { style: { textAlign: 'center', padding: 60, background: 'white', borderRadius: 12, border: '1px solid #e2e8f0' } },
+          h('div', { style: { fontSize: '2.5rem', marginBottom: 10 } }, '🤍'),
+          h('h3', { style: { fontSize: '1.2rem', fontWeight: 700 } }, 'Your Wishlist is Empty'),
+          h('p', { style: { color: '#64748b', fontSize: '0.88rem', marginTop: 4 } }, 'Explore our catalog and click the heart icon to save products.'),
+          h('button', { className: 'btn btn-secondary', style: { marginTop: 16 }, onClick: () => setRoute('store') }, 'Browse Store ➔')
+        )
+      ) : (
+        h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 18 } },
+          sorted.map(item =>
+            h('div', {
+              key: item.id,
+              style: { background: 'white', border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column' }
+            },
+              h('div', { style: { height: 180, position: 'relative', background: '#f8fafc', overflow: 'hidden' } },
+                h('img', { src: item.image, alt: item.name, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
+                item.stock === 0 ? (
+                  h('span', { style: { position: 'absolute', top: 10, right: 10, background: '#fee2e2', color: '#991b1b', padding: '3px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 } }, 'Out of Stock')
+                ) : (
+                  h('span', { style: { position: 'absolute', top: 10, right: 10, background: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 } }, `In Stock (${item.stock})`)
+                )
+              ),
+              h('div', { style: { padding: 14, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' } },
+                h('div', null,
+                  h('div', { style: { fontSize: '0.72rem', color: '#da1c5c', fontWeight: 700, textTransform: 'uppercase' } }, item.category),
+                  h('div', { style: { fontWeight: 700, fontSize: '0.92rem', color: '#0f172a', margin: '4px 0 6px 0' } }, item.name),
+                  h('div', { style: { fontSize: '1.05rem', fontWeight: 800, color: '#1e1b4b' } }, `$${item.price.toFixed(2)}`)
+                ),
+                h('div', { style: { display: 'flex', gap: 8, marginTop: 14 } },
+                  // BUG-037: Move to Cart bypasses inventory check for Product #4 (0 stock)
+                  h('button', {
+                    className: 'btn btn-primary btn-sm',
+                    style: { flex: 1, fontSize: '0.78rem' },
+                    onClick: () => handleMoveWishlistItemToCart(item)
+                  }, '+ Move to Bag'),
+                  // BUG-040: Removed item resurrects on route navigation
+                  h('button', {
+                    className: 'btn btn-secondary btn-sm',
+                    style: { fontSize: '0.78rem' },
+                    onClick: () => handleRemoveFromWishlist(item.id)
+                  }, 'Remove')
+                )
+              )
+            )
+          )
+        )
+      )
+    );
+  }
+
   function renderCompletedView() {
     if (!candidate) return renderBriefView();
 
@@ -1696,15 +2772,39 @@ function App() {
         title: 'Mission 4: Product Popups & Reviews',
         icon: '⭐',
         desc: 'Click on product cards to open the detail modal, check pricing display, and submit a customer review.',
-        tips: 'Does the price inside the product popup include a $ dollar sign? Can you close the Terms popup using the Esc key?'
+        tips: 'Does the price inside the product popup include a $ dollar sign? Can you close the Terms popup using the Esc key? What happens with HTML tags in reviews?'
+      },
+      {
+        title: 'Mission 5: User Profile & Security Settings',
+        icon: '👤',
+        desc: 'Update account details on the Profile page. Test password updates, phone numbers, and notification toggles.',
+        tips: 'Does Change Password accept a 1-character password and mismatch? Does phone number accept letters? Does Delete Account wipe immediately without warning?'
+      },
+      {
+        title: 'Mission 6: Order History & Real-Time Tracking',
+        icon: '📦',
+        desc: 'Inspect past orders on the Orders page. Test tracking statuses, order search, tax invoices, and re-ordering.',
+        tips: 'What delivery date is shown on Order #ORD-8821? Does order search work with lowercase ord-9942? Does invoice tax add up correctly, or is it double counted? What price do re-ordered items have in your bag?'
+      },
+      {
+        title: 'Mission 7: Customer Support & Live Help',
+        icon: '🎧',
+        desc: 'Visit Customer Support. Test ticket submission, file attachment types, live chat messages, and FAQ accordions.',
+        tips: 'Can you submit a ticket with empty subject and message? Does file attachment block dangerous .exe or .sh scripts? What happens if you send a chat message longer than 100 characters? Are priority badge colors inverted?'
+      },
+      {
+        title: 'Mission 8: Wishlist & Saved Collections',
+        icon: '🤍',
+        desc: 'Manage saved products in Wishlist. Try moving all items to bag, test sorting by price, and remove an item before navigating back to store.',
+        tips: 'Does Move All to Bag remove items from your wishlist? Can you move out-of-stock headphones to your bag? Does the navbar heart badge update? Does price sorting sort numerically or alphabetically? Does a removed item stay removed after returning to the store?'
       }
     ];
 
     return h('div', { className: 'drawer-body' },
       h('div', { style: { marginBottom: 14 } },
-        h('h3', { style: { fontSize: '1.05rem', fontWeight: 800, color: '#1e1b4b' } }, '🎯 4 Student Testing Missions'),
+        h('h3', { style: { fontSize: '1.05rem', fontWeight: 800, color: '#1e1b4b' } }, '🎯 8 Student Testing Missions'),
         h('p', { style: { fontSize: '0.84rem', color: '#64748b', marginTop: 2 } },
-          'Follow these 4 missions to guide your testing. Whenever you notice something wrong, switch back to "Log Issue" to report it.'
+          'Follow these 8 guided missions across all sections of the platform. Whenever you discover an anomaly, switch back to "Log Issue" to report it.'
         )
       ),
       missions.map((m, i) =>
@@ -2160,10 +3260,10 @@ function App() {
       // Collapsible Seeded Defect Master Catalog Reference
       h('details', { style: { background: 'white', padding: '16px 20px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 24 } },
         h('summary', { style: { cursor: 'pointer', fontWeight: 700, color: '#475569', fontSize: '0.95rem' } },
-          `🔍 Seeded Defect Answer Key Reference (Click to Expand - ${(d.foundBugIds || []).length} / 20 Matched)`
+          `🔍 Seeded Defect Answer Key Reference (Click to Expand - ${(d.foundBugIds || []).length} / ${(d.seededBugs || []).length || 40} Matched)`
         ),
         h('p', { style: { fontSize: '0.85rem', color: '#64748b', margin: '10px 0 14px 0' } },
-          'Master list of all 20 seeded test defects for evaluator reference.'
+          `Master list of all ${(d.seededBugs || []).length || 40} seeded test defects for evaluator reference.`
         ),
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 } },
           (d.seededBugs || []).map(b => {

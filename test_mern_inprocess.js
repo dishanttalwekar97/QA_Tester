@@ -10,12 +10,12 @@ const { SEEDED_BUGS } = require('./server/db/seedData');
 async function testMern() {
   console.log('🧪 Running In-Process MERN Architecture Tests...');
 
-  // 1. Verify 20 Seeded Bugs
+  // 1. Verify 40 Seeded Bugs
   console.log(`Checking Seeded Bugs catalog...`);
-  if (SEEDED_BUGS.length !== 20) {
-    throw new Error(`Expected 20 seeded bugs, found ${SEEDED_BUGS.length}`);
+  if (SEEDED_BUGS.length !== 40) {
+    throw new Error(`Expected 40 seeded bugs, found ${SEEDED_BUGS.length}`);
   }
-  console.log(`✓ Exactly 20 Seeded Bugs present in Ground-Truth catalog`);
+  console.log(`✓ Exactly 40 Seeded Bugs present in Ground-Truth catalog`);
 
   // 2. Test MongoDB Candidate Model
   const testToken = 'cand-unit-test-' + Date.now();

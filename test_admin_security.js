@@ -118,10 +118,10 @@ async function runSecurityTests() {
 
     // 8. Admin Bug Catalog with valid X-Admin-Token succeeds
     const authCatalog = await makeRequest(port, '/api/admin/bug-catalog', 'GET', { 'X-Admin-Token': adminToken });
-    if (authCatalog.statusCode !== 200 || authCatalog.body.seededBugs.length !== 20) {
+    if (authCatalog.statusCode !== 200 || authCatalog.body.seededBugs.length !== 40) {
       throw new Error('Authenticated bug catalog fetch failed');
     }
-    console.log('✓ [AUTH] GET /api/admin/bug-catalog with X-Admin-Token returned all 20 seeded bugs to authorized evaluator');
+    console.log('✓ [AUTH] GET /api/admin/bug-catalog with X-Admin-Token returned all 40 seeded bugs to authorized evaluator');
 
     // 9. Admin Logout invalidates the session token
     const logoutRes = await makeRequest(port, '/api/admin/logout', 'POST', {}, { adminToken });

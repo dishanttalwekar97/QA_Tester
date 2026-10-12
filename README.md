@@ -18,7 +18,7 @@ QA_Tester/
 │   ├── server.js                 # Express REST API server
 │   ├── db/
 │   │   ├── mongo.js              # MongoDB document engine (Mongoose-compatible)
-│   │   └── seedData.js           # 20 Seeded QA Bugs & initial product catalog
+│   │   └── seedData.js           # 40 Seeded QA Bugs & initial product catalog
 │   ├── models/
 │   │   ├── Candidate.js          # MongoDB Candidate model
 │   │   ├── BugReport.js          # MongoDB BugReport model (with candidate redaction)
@@ -68,7 +68,7 @@ bin/node test_admin_security.js
 
 ## 🐞 Master Known Errors & Seeded Bug Answer Key (Comprehensive Reviewer Guide)
 
-This section serves as the **ground-truth answer key** for hiring managers and evaluators. The application contains exactly **20 intentional defects** spanning business logic, validation, edge cases, responsive layout, security, and accessibility.
+This section serves as the **ground-truth answer key** for hiring managers and evaluators. The application contains exactly **40 intentional defects** spanning 8 comprehensive user workflows across Storefront, Bag, Checkout, Reviews, User Profile, Order History & Tracking, Customer Support, and Wishlist Collections.
 
 ---
 
@@ -111,11 +111,47 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Button has no debounce or disable flag; rapid clicks fire multiple concurrent POST requests, resulting in duplicate order creation.
 * **Competency Tested:** Button debouncing, API throttling, duplicate payment prevention.
 
+#### 4. BUG-021: Password Change Allows 1-Character Password & Disregards Confirmation Mismatch
+* **Category:** Security / Authentication Integrity
+* **Severity:** **Blocker**
+* **Code Location:** `client/public/app.js` (`handleUpdatePassword`)
+* **Reproduction Steps:**
+  1. Navigate to the **Profile** page (`/profile`).
+  2. Under Change Password, enter Current Password, New Password as `"x"`, and Confirm New Password as `"12345678"`.
+  3. Click **Update Password**.
+* **Expected Result:** Form must enforce minimum password complexity (8+ characters) and strictly reject confirmation mismatches with clear validation errors.
+* **Actual Defect:** Allows 1-character password and completely disregards confirmation mismatch, saving the insecure password with success toast.
+* **Competency Tested:** Password security policies, form input validation, field comparison logic.
+
+#### 5. BUG-028: Invoice Download Calculates Double Tax on Line Items
+* **Category:** Business Logic / Financial Calculation
+* **Severity:** **Blocker**
+* **Code Location:** `client/public/app.js` (`renderInvoiceModal`)
+* **Reproduction Steps:**
+  1. Navigate to the **Orders** page (`/orders`).
+  2. Click **📄 Invoice** on any order (e.g., Order #ORD-8821).
+  3. Inspect the cost breakdown and invoice grand total.
+* **Expected Result:** Invoice grand total must equal `Subtotal + 10% Tax + Shipping`.
+* **Actual Defect:** 10% sales tax is added twice into the invoice summary (Subtotal + Tax + Surcharge Tax + Shipping), causing customers to be overcharged by 10%.
+* **Competency Tested:** Billing accuracy, financial breakdown auditing, invoice verification.
+
+#### 6. BUG-029: 'Re-Order Items' Button Adds Products to Cart at $0.00 Price
+* **Category:** Business Logic / Pricing Integrity
+* **Severity:** **Blocker**
+* **Code Location:** `client/public/app.js` (`handleReorderItems`)
+* **Reproduction Steps:**
+  1. Navigate to the **Orders** page (`/orders`).
+  2. Click **🔁 Re-Order** on Order #ORD-9942.
+  3. Open the Shopping Bag (`/cart`).
+* **Expected Result:** Re-ordered items should be transferred into the cart retaining their current catalog retail prices.
+* **Actual Defect:** Items are added to the bag with their unit price hardcoded to `$0.00`, enabling free checkouts.
+* **Competency Tested:** State transfer logic, price integrity, commercial business rules.
+
 ---
 
 ### Category 2: Major Severity Defects (7 Points Each)
 
-#### 4. BUG-004: Free Shipping Threshold Discrepancy
+#### 7. BUG-004: Free Shipping Threshold Discrepancy
 * **Category:** Business Logic / Requirement Compliance
 * **Severity:** **Major**
 * **Code Location:** `client/public/app.js` (`calculateTotals`, line ~255)
@@ -127,7 +163,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Logic checks `subtotal >= 100 ? 0 : 10.00`, continuing to charge $10.00 shipping until subtotal exceeds $100.
 * **Competency Tested:** Specification verification, promotional calculation validation.
 
-#### 5. BUG-005: Zero Quantity Item Lingers as Ghost Item
+#### 8. BUG-005: Zero Quantity Item Lingers as Ghost Item
 * **Category:** Cart State / Data Lifecycle
 * **Severity:** **Major**
 * **Code Location:** `client/public/app.js` (`handleUpdateQuantity`, line ~135)
@@ -138,7 +174,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Item remains in the cart table with quantity 0 and line total $0.00, lingering as a ghost row.
 * **Competency Tested:** Zero-value edge case testing, collection cleanup.
 
-#### 6. BUG-006: In-Stock Badge vs Add-to-Cart Failure for Product #4
+#### 9. BUG-006: In-Stock Badge vs Add-to-Cart Failure for Product #4
 * **Category:** Data Consistency / Inventory Sync
 * **Severity:** **Major**
 * **Code Location:** `client/public/app.js` (`handleAddToCart`, line ~110) & `server/db/seedData.js`
@@ -150,7 +186,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Badge claims product is in stock, but clicking Add to Cart triggers an error toast: *"Error: Item is out of stock in warehouse inventory."*
 * **Competency Tested:** Cross-component state consistency, warehouse inventory sync testing.
 
-#### 7. BUG-007: Name Field Rejects Apostrophes and Hyphens
+#### 10. BUG-007: Name Field Rejects Apostrophes and Hyphens
 * **Category:** Input Validation / Real-World Sanitization
 * **Severity:** **Major**
 * **Code Location:** `client/public/app.js` (`handlePlaceOrder`, line ~185)
@@ -162,7 +198,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Regex `/^[a-zA-Z0-9 ]+$/` strictly rejects any non-alphanumeric character with error: *"Full name must only contain alphanumeric characters without punctuation."*
 * **Competency Tested:** Input validation, character set sanitization, internationalization.
 
-#### 8. BUG-008: Max Stock Limit Bypass via Manual Typing
+#### 11. BUG-008: Max Stock Limit Bypass via Manual Typing
 * **Category:** Inventory Constraints / Form Validation
 * **Severity:** **Major**
 * **Code Location:** `client/public/app.js` (`handleUpdateQuantity`, line ~135)
@@ -175,7 +211,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Manual typing bypasses stock validation entirely, permitting orders exceeding warehouse inventory.
 * **Competency Tested:** Client-side constraint bypass, inventory boundary checks.
 
-#### 9. BUG-009: Special Characters in Search Crash Server with 500 Error
+#### 12. BUG-009: Special Characters in Search Crash Server with 500 Error
 * **Category:** Error Handling / Resilience
 * **Severity:** **Major**
 * **Code Location:** `server/server.js` (line ~175) & `client/public/app.js`
@@ -186,7 +222,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Unhandled exception triggers a red **500 Internal Server Error** crash modal.
 * **Competency Tested:** API resilience, crash handling, special character fuzzing.
 
-#### 10. BUG-020: Removing 2nd Item in Cart Accidentally Removes 1st Item
+#### 13. BUG-020: Removing 2nd Item in Cart Accidentally Removes 1st Item
 * **Category:** Business Logic / Array Indexing
 * **Severity:** **Major**
 * **Code Location:** `client/public/app.js` (`handleRemoveFromCart`, line ~150)
@@ -198,11 +234,116 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Off-by-one array index defect (`copy.splice(index - 1, 1)`) removes the preceding item (Item 1: Earbuds) instead.
 * **Competency Tested:** CRUD operations, list management, array index boundary verification.
 
+#### 14. BUG-022: Profile Phone Number Field Accepts Alphabetic & Special Characters
+* **Category:** Input Validation / Format Sanitization
+* **Severity:** **Major**
+* **Code Location:** `client/public/app.js` (`handleUpdateProfile`)
+* **Reproduction Steps:**
+  1. Navigate to the **Profile** page (`/profile`).
+  2. In the **Phone Number** input, enter `"call-me-now-$$$!"`.
+  3. Click **Save Profile Changes**.
+* **Expected Result:** Phone input should strictly validate standard telephone digits and punctuation (`+`, `-`, `()`, numbers).
+* **Actual Defect:** Accepts arbitrary alphabetical characters and symbols without validation.
+* **Competency Tested:** Input data integrity, regex format checking, field constraints.
+
+#### 15. BUG-024: Profile Email Update Accepts Invalid Format Without Domain
+* **Category:** Input Validation / RFC Email Compliance
+* **Severity:** **Major**
+* **Code Location:** `client/public/app.js` (`handleUpdateProfile`)
+* **Reproduction Steps:**
+  1. On the **Profile** page, change email address to `"student@"`.
+  2. Click **Save Profile Changes**.
+* **Expected Result:** Form must validate standard email syntax (`user@domain.tld`) and reject incomplete emails.
+* **Actual Defect:** Input accepts strings lacking a valid host domain or TLD without validation.
+* **Competency Tested:** Email format validation, syntax compliance, client-side guards.
+
+#### 16. BUG-025: Danger 'Delete Account' Button Erases Account Instantly Without Confirmation Dialog
+* **Category:** Usability / Safety Confirmation
+* **Severity:** **Major**
+* **Code Location:** `client/public/app.js` (`handleDeleteAccountImmediately`)
+* **Reproduction Steps:**
+  1. Navigate to the **Profile** page (`/profile`).
+  2. Click the red **Delete Account Immediately** button.
+* **Expected Result:** Destructive actions must require explicit two-step user confirmation (modal or prompt: *"Are you sure you want to permanently delete your account?"*).
+* **Actual Defect:** Single click wipes candidate session, cart, and authentication immediately with zero confirmation prompt.
+* **Competency Tested:** Usability safety patterns, destructive action guardrails, UX error prevention.
+
+#### 17. BUG-026: Order Tracking Displays 'Delivered' With Impossible Future Delivery Date
+* **Category:** Data Consistency / Temporal Logic
+* **Severity:** **Major**
+* **Code Location:** `server/db/seedData.js` (`ORDERS`) & `client/public/app.js` (`renderTrackingModal`)
+* **Reproduction Steps:**
+  1. Go to the **Orders** page (`/orders`).
+  2. Click **📍 Track** on Order #ORD-8821.
+  3. Inspect the courier tracking timeline and delivery timestamp.
+* **Expected Result:** Completed orders marked "Delivered" must feature historical past timestamps. Future dates should indicate "Scheduled" or "In Transit".
+* **Actual Defect:** Order tracking states status is `"Delivered"` with delivery date set to `"December 31, 2099"`.
+* **Competency Tested:** Temporal logic testing, cross-field lifecycle consistency.
+
+#### 18. BUG-031: Support Ticket Submission Permits Completely Blank Inquiries
+* **Category:** Input Validation / Required Fields
+* **Severity:** **Major**
+* **Code Location:** `client/public/app.js` (`handleSupportTicketSubmit`)
+* **Reproduction Steps:**
+  1. Go to the **Support** page (`/support`).
+  2. Leave **Subject** and **Message Description** completely blank.
+  3. Click **Submit Support Ticket**.
+* **Expected Result:** Form must require non-empty text in required subject and message fields.
+* **Actual Defect:** Ticket form accepts blank inquiries and generates a registered support ticket without validation.
+* **Competency Tested:** Mandatory field enforcement, empty form submission testing.
+
+#### 19. BUG-032: Ticket Attachment Accepts Executable Files (.exe, .sh) Without Validation
+* **Category:** Security / File Upload Validation
+* **Severity:** **Major**
+* **Code Location:** `client/public/app.js` (`handleSupportFileAttachment`)
+* **Reproduction Steps:**
+  1. On the **Support** page, click the file upload input.
+  2. Select an executable script or file named `"malware.exe"` or `"exploit.sh"`.
+* **Expected Result:** File input should be restricted to safe document and image formats (`.png`, `.jpg`, `.pdf`) using `accept` attribute and extension whitelisting.
+* **Actual Defect:** Input accepts any arbitrary file extension, including dangerous executable binaries and scripts.
+* **Competency Tested:** File upload security, MIME type filtering, defense-in-depth.
+
+#### 20. BUG-034: Live Chat Message Exceeding 100 Characters Crashes Chat Window
+* **Category:** Error Handling / Recursion Fault
+* **Severity:** **Major**
+* **Code Location:** `client/public/app.js` (`handleSendChatMessage`)
+* **Reproduction Steps:**
+  1. On the **Support** page, locate the PulseBot Live Support chat widget.
+  2. Type a message with 105 characters (e.g. `"This is a long customer inquiry to test buffer handling and live message streaming stability in chat widget."`).
+  3. Click **Send**.
+* **Expected Result:** Chat messages should either be truncated, capped with a character counter, or sent smoothly.
+* **Actual Defect:** Triggers an uncaught `RangeError: Maximum call stack size exceeded` recursion crash, breaking the live chat UI.
+* **Competency Tested:** Message boundary fuzzing, client-side crash resilience, error boundary inspection.
+
+#### 21. BUG-036: 'Move All to Cart' from Wishlist Fails to Remove Items from Wishlist
+* **Category:** Business Logic / Collection Synchronization
+* **Severity:** **Major**
+* **Code Location:** `client/public/app.js` (`handleMoveAllWishlistToCart`)
+* **Reproduction Steps:**
+  1. Add items to the **Wishlist** (`/wishlist`).
+  2. Click **🛍️ Move All to Bag**.
+  3. Observe Wishlist grid and Shopping Bag.
+* **Expected Result:** Items moved to bag should be removed from the Wishlist.
+* **Actual Defect:** Items are duplicated into the Shopping Bag while lingering in the Wishlist.
+* **Competency Tested:** Move operation semantics, duplicate collection hygiene.
+
+#### 22. BUG-037: Moving Out-of-Stock Product from Wishlist to Cart Bypasses Stock Check
+* **Category:** Business Logic / Inventory Guardrails
+* **Severity:** **Major**
+* **Code Location:** `client/public/app.js` (`handleMoveWishlistItemToCart`)
+* **Reproduction Steps:**
+  1. Open the **Wishlist** page (`/wishlist`).
+  2. Locate Product #4 ("Noise-Cancelling Headphones Pro", marked Out of Stock).
+  3. Click **+ Move to Bag**.
+* **Expected Result:** Out-of-stock items should have disabled transfer buttons or display an out-of-stock error toast.
+* **Actual Defect:** Bypasses inventory validation completely, successfully placing zero-stock items into the cart.
+* **Competency Tested:** Alternate path constraint testing, inventory bypass detection.
+
 ---
 
 ### Category 3: Medium Severity Defects (5 Points Each)
 
-#### 11. BUG-010: Inverted Price Filter Range Accepted Without Error
+#### 23. BUG-010: Inverted Price Filter Range Accepted Without Error
 * **Category:** Filter Validation / Relational Inputs
 * **Severity:** **Medium**
 * **Code Location:** `client/public/app.js` (line ~285)
@@ -213,7 +354,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Inverted range is silently processed without warning, resulting in an empty catalog.
 * **Competency Tested:** Relational input validation, boundary checking.
 
-#### 12. BUG-011: Cart State Lost on Page Reload (F5)
+#### 24. BUG-011: Cart State Lost on Page Reload (F5)
 * **Category:** State Persistence / Session Resilience
 * **Severity:** **Medium**
 * **Code Location:** `client/public/app.js` (`const [cart, setCart] = useState([])`)
@@ -225,7 +366,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Cart resides solely in volatile memory and resets to empty on refresh.
 * **Competency Tested:** Session state persistence, reload resilience.
 
-#### 13. BUG-012: Valid Future Expiry Date (12/30) Flagged as Expired
+#### 25. BUG-012: Valid Future Expiry Date (12/30) Flagged as Expired
 * **Category:** Input Validation / Date Logic
 * **Severity:** **Medium**
 * **Code Location:** `client/public/app.js` (`handlePlaceOrder`, line ~195)
@@ -236,7 +377,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Defective year comparison evaluates `30` incorrectly and flags: *"Card Error: Your card has expired."*
 * **Competency Tested:** Date boundary analysis, format parsing logic.
 
-#### 14. BUG-013: Sticky Checkout Bar Overlaps Terms Checkbox on Mobile (<450px)
+#### 26. BUG-013: Sticky Checkout Bar Overlaps Terms Checkbox on Mobile (<450px)
 * **Category:** Responsive UI / Viewport Breakpoints
 * **Severity:** **Medium**
 * **Code Location:** `client/public/style.css` (`@media (max-width: 450px) .checkout-sticky-bar`)
@@ -247,7 +388,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Fixed sticky bar overlays the "Terms of Service" checkbox, making it unclickable.
 * **Competency Tested:** Responsive cross-device testing, CSS z-index and fixed element layout.
 
-#### 15. BUG-018: Unsanitized Review Submission Renders Raw HTML (XSS)
+#### 27. BUG-018: Unsanitized Review Submission Renders Raw HTML (XSS)
 * **Category:** Security / Input Sanitization
 * **Severity:** **Medium**
 * **Code Location:** `client/public/app.js` (`renderProductModal`, line ~365)
@@ -259,11 +400,60 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** HTML formatting is injected raw via `dangerouslySetInnerHTML`, parsing tags directly into DOM.
 * **Competency Tested:** Security QA, Cross-Site Scripting (XSS) awareness, sanitization.
 
+#### 28. BUG-023: Notification Settings Changes Silently Revert on Page Refresh
+* **Category:** State Persistence / Settings Integrity
+* **Severity:** **Medium**
+* **Code Location:** `client/public/app.js` (`handleSaveNotificationSettings`)
+* **Reproduction Steps:**
+  1. Go to the **Profile** page (`/profile`).
+  2. Toggle **SMS Order Alerts** to ON, and **Promotional Deals** to OFF.
+  3. Click **Save Notification Preferences** (displays success toast).
+  4. Refresh the page or navigate away and return to `/profile`.
+* **Expected Result:** Updated notification settings should persist across sessions and page reloads.
+* **Actual Defect:** Toggles silently reset back to default preferences on reload or route change.
+* **Competency Tested:** State persistence, settings round-trip testing.
+
+#### 29. BUG-030: Order History 'Next Page' Button Increments Past Last Page into Blank Screen
+* **Category:** Navigation / Pagination Boundaries
+* **Severity:** **Medium**
+* **Code Location:** `client/public/app.js` (`renderOrdersView`)
+* **Reproduction Steps:**
+  1. Go to the **Orders** page (`/orders`).
+  2. Click **Next Page ▶** until reaching the final page (Page 2 of 2).
+  3. Click **Next Page ▶** again.
+* **Expected Result:** Next button should be disabled when current page equals total pages.
+* **Actual Defect:** Button remains enabled indefinitely, advancing to "Page 3 of 2" and rendering an empty table.
+* **Competency Tested:** Pagination boundary analysis, out-of-bounds error handling.
+
+#### 30. BUG-039: Wishlist 'Sort by Price' Performs Lexicographical String Sort Instead of Numeric Sort
+* **Category:** Usability / Data Sorting
+* **Severity:** **Medium**
+* **Code Location:** `client/public/app.js` (`renderWishlistView`)
+* **Reproduction Steps:**
+  1. Open the **Wishlist** page (`/wishlist`).
+  2. In the sort dropdown, select **Sort by Price: Low to High**.
+  3. Observe product order ($129.99 vs $29.99).
+* **Expected Result:** Products should sort numerically: `$29.99` $\to$ `$79.99` $\to$ `$129.99` $\to$ `$149.99`.
+* **Actual Defect:** Prices are sorted as text strings alphabetically, ordering `$129.99` before `$29.99` because `'1'` < `'2'`.
+* **Competency Tested:** Sorting algorithm validation, alphanumeric vs numeric type checks.
+
+#### 31. BUG-040: Removed Wishlist Items Reappear After Navigating to Store and Back
+* **Category:** State Management / Local Collection Sync
+* **Severity:** **Medium**
+* **Code Location:** `client/public/app.js` (`handleRemoveFromWishlist`)
+* **Reproduction Steps:**
+  1. Go to the **Wishlist** page (`/wishlist`).
+  2. Click **Remove** on any item (item disappears from list).
+  3. Navigate to **Store** (`/store`), then return to **Wishlist** (`/wishlist`).
+* **Expected Result:** Item removal should persist across application route transitions.
+* **Actual Defect:** Removed item resurrects and reappears upon returning to the Wishlist view.
+* **Competency Tested:** Client route transitions, collection delete persistence.
+
 ---
 
 ### Category 4: Minor Severity Defects (3 Points Each)
 
-#### 16. BUG-014: Broken Product Image Asset for Product #6
+#### 32. BUG-014: Broken Product Image Asset for Product #6
 * **Category:** Visual UI / Media Loading
 * **Severity:** **Minor**
 * **Code Location:** `server/db/seedData.js` (`/static/images/keyboard_broken.png`)
@@ -274,7 +464,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Image link returns 404, displaying a broken image icon.
 * **Competency Tested:** Visual inspection, 404 network asset tracking.
 
-#### 17. BUG-015: Missing Currency Symbol on Product Detail Page
+#### 33. BUG-015: Missing Currency Symbol on Product Detail Page
 * **Category:** Visual UI / Localization Consistency
 * **Severity:** **Minor**
 * **Code Location:** `client/public/app.js` (`renderProductModal`, line ~350)
@@ -285,7 +475,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Price renders as a bare float (`149.99`) missing the `$` sign.
 * **Competency Tested:** Formatting consistency, localization inspection.
 
-#### 18. BUG-016: Clear All Filters Fails to Uncheck Category Checkboxes
+#### 34. BUG-016: Clear All Filters Fails to Uncheck Category Checkboxes
 * **Category:** Usability / Form State
 * **Severity:** **Minor**
 * **Code Location:** `client/public/app.js` (`handleClearFilters`, line ~178)
@@ -296,7 +486,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Search text and prices clear, but category checkboxes remain selected.
 * **Competency Tested:** Reset workflow verification, state cleanup.
 
-#### 19. BUG-017: Modal Escape Key Non-Responsive & Missing ARIA Label
+#### 35. BUG-017: Modal Escape Key Non-Responsive & Missing ARIA Label
 * **Category:** Accessibility (a11y) / Keyboard Navigation
 * **Severity:** **Minor**
 * **Code Location:** `client/public/app.js` (`renderTermsModal`, line ~225)
@@ -308,7 +498,7 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Escape key is ignored and close button lacks accessibility labels.
 * **Competency Tested:** WCAG 2.1 accessibility, keyboard trap avoidance.
 
-#### 20. BUG-019: Browser Back Button After Order Re-Exposes Payment Form
+#### 36. BUG-019: Browser Back Button After Order Re-Exposes Payment Form
 * **Category:** Navigation / History Lifecycle
 * **Severity:** **Minor**
 * **Code Location:** `client/public/app.js` (`renderCartView`, line ~385)
@@ -319,20 +509,66 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **Actual Defect:** Previous populated checkout form re-appears with card details intact.
 * **Competency Tested:** Navigation history hygiene, sensitive data lifecycle.
 
+#### 37. BUG-027: Order Search Fails on Lowercase Tracking ID
+* **Category:** Usability / Search Query Normalization
+* **Severity:** **Minor**
+* **Code Location:** `client/public/app.js` (`renderOrdersView`)
+* **Reproduction Steps:**
+  1. Go to the **Orders** page (`/orders`).
+  2. In the order search bar, type lowercase `"ord-9942"` and press Enter.
+* **Expected Result:** Order search should perform case-insensitive matching (`ord-9942` matches `ORD-9942`).
+* **Actual Defect:** Search is strictly case-sensitive; lowercase tracking queries return *"No orders found"*.
+* **Competency Tested:** Case-folding search verification, query normalization.
+
+#### 38. BUG-033: Support FAQ Accordions Cannot Be Toggled via Keyboard (Enter/Space)
+* **Category:** Accessibility (a11y) / Keyboard Operability
+* **Severity:** **Minor**
+* **Code Location:** `client/public/app.js` (`renderSupportView`)
+* **Reproduction Steps:**
+  1. On the **Support** page, navigate to the FAQ accordion section.
+  2. Tab to a question header using the keyboard.
+  3. Press `Enter` or `Space`.
+* **Expected Result:** Accordion triggers should open/close via keyboard and expose `aria-expanded="true/false"`.
+* **Actual Defect:** Accordion only responds to pointer click events, ignoring keyboard activation and lacking ARIA attributes.
+* **Competency Tested:** WCAG 2.1 keyboard operability, ARIA state inspection.
+
+#### 39. BUG-035: Support Priority Badges Have Swapped Color Semantics (Urgent is Green, Low is Red)
+* **Category:** Visual UI / Semantic Color Mapping
+* **Severity:** **Minor**
+* **Code Location:** `client/public/app.js` (`renderSupportView`)
+* **Reproduction Steps:**
+  1. Navigate to the **Support** page (`/support`).
+  2. Inspect the ticket priority badges ("Low", "Normal", "Urgent").
+* **Expected Result:** Urgent priority should use alarming alert colors (red/amber); Low priority should use calm neutral colors (green/gray).
+* **Actual Defect:** Colors are swapped; "Urgent" is styled in calm green (`#22c55e`) and "Low" is styled in alarming red (`#ef4444`).
+* **Competency Tested:** UI semantic visual auditing, intuitive color theory.
+
+#### 40. BUG-038: Navbar Wishlist Badge Counter Remains at 0 When Items Are Added
+* **Category:** Visual UI / Reactive Badges
+* **Severity:** **Minor**
+* **Code Location:** `client/public/app.js` (Navbar header actions)
+* **Reproduction Steps:**
+  1. Browse the store or wishlist.
+  2. Click the heart icon (🤍) to add products to your Wishlist.
+  3. Inspect the top navbar Wishlist heart badge counter.
+* **Expected Result:** Badge should update reactively to display the real-time count of saved items (e.g., `4`).
+* **Actual Defect:** Badge is permanently hardcoded and frozen at `0` regardless of wishlist count.
+* **Competency Tested:** Reactive badge counter validation, global header sync testing.
+
 ---
 
 ## 📊 Candidate Scoring & Evaluation Matrix
 
 | Score Range | Recommendation | QA Seniority Profile |
 | :--- | :--- | :--- |
-| **85% – 100%** | **Strong Pass** | **Senior QA**: Discovered all critical logic/race-condition defects (BUG-001, BUG-002, BUG-003), plus security (BUG-018) and responsive/a11y bugs with minimal, reproducible steps. |
-| **65% – 84%** | **Pass** | **Mid QA**: Strong functional coverage (caught negative quantities, shipping discrepancies, max stock limits, and form validations). |
-| **40% – 64%** | **Consider** | **Junior QA**: Caught obvious visual and cosmetic defects (broken images, missing symbols, clear filter bugs) but missed subtle business logic edge cases. |
+| **85% – 100%** | **Strong Pass** | **Senior QA**: Discovered critical logic and race-condition defects (BUG-001, BUG-002, BUG-003, BUG-021, BUG-028, BUG-029), security vulnerabilities (BUG-018, BUG-032), and edge cases across all pages with minimal, reproducible steps. |
+| **65% – 84%** | **Pass** | **Mid QA**: Strong functional coverage (caught negative quantities, shipping discrepancies, max stock limits, double tax, out-of-stock cart bypass, and form validations). |
+| **40% – 64%** | **Consider** | **Junior QA**: Caught obvious visual and cosmetic defects (broken images, missing symbols, inverted badge colors, clear filter bugs) but missed subtle business logic edge cases. |
 | **< 40%** | **Reject** | Low exploratory initiative, poor reproduction steps clarity, or high false-positive rate. |
 
 ---
 
-## 📋 Quick Reference: 20 Seeded Bugs (One-Liner Summary)
+## 📋 Quick Reference: 40 Seeded Bugs (One-Liner Summary)
 
 * **BUG-001**: **Negative Quantity in Cart Reduces Order Total** — Entering negative quantities in the cart reduces the line item total, giving an unauthorized discount or negative bill.
 * **BUG-002**: **Infinite Coupon Code Stacking** — Repeatedly clicking "Apply" on promo code `SAVE20` compounds 20% discounts indefinitely without limit.
@@ -354,3 +590,23 @@ This section serves as the **ground-truth answer key** for hiring managers and e
 * **BUG-018**: **Unsanitized Review Submission Renders Raw HTML (XSS)** — Submitting user reviews with HTML tags (e.g., `<b>Great</b>`) renders unescaped HTML directly in the DOM.
 * **BUG-019**: **Browser Back Button After Order Re-Exposes Payment Form** — Clicking browser Back after order completion returns to the populated checkout form with card details exposed.
 * **BUG-020**: **Removing 2nd Item in Cart Accidentally Removes 1st Item** — In a multi-item cart, clicking "Remove" on the 2nd item deletes the 1st item instead due to an off-by-one array index defect.
+* **BUG-021**: **Password Change Allows 1-Character Password & Disregards Confirmation Mismatch** — Profile change password form permits 1-character passwords and saves successfully even when confirm password does not match.
+* **BUG-022**: **Profile Phone Number Field Accepts Alphabetic & Special Characters** — User Profile phone field accepts arbitrary letters and symbols (`call-me-now!`) without numeric validation.
+* **BUG-023**: **Notification Settings Changes Silently Revert on Page Refresh** — Toggling notification preferences shows a success toast but silently reverts back to defaults on reload or navigation.
+* **BUG-024**: **Profile Email Update Accepts Invalid Format Without Domain** — User Profile email update accepts malformed strings like `student@` without domain regex validation.
+* **BUG-025**: **Danger 'Delete Account' Button Erases Account Instantly Without Confirmation Dialog** — Clicking red Delete Account button erases account and candidate session immediately on single click without warning modal.
+* **BUG-026**: **Order Tracking Displays 'Delivered' With Impossible Future Delivery Date** — Order #ORD-8821 tracking displays status "Delivered" alongside future timestamp "December 31, 2099".
+* **BUG-027**: **Order Search Fails on Lowercase Tracking ID** — Order history search is strictly case-sensitive, returning 0 results for `ord-9942` while matching uppercase `ORD-9942`.
+* **BUG-028**: **Invoice Download Calculates Double Tax on Line Items** — Order tax invoice summary double-counts 10% tax into grand total (Subtotal + Tax + Surcharge Tax + Shipping).
+* **BUG-029**: **'Re-Order Items' Button Adds Products to Cart at $0.00 Price** — Clicking Re-Order on past orders adds products into shopping bag with price set to $0.00.
+* **BUG-030**: **Order History 'Next Page' Button Increments Past Last Page into Blank Screen** — Pagination Next button never disables on last page, incrementing out of bounds (Page 3 of 2) into an empty table.
+* **BUG-031**: **Support Ticket Submission Permits Completely Blank Inquiries** — Customer Support ticket form allows submitting inquiries with completely empty Subject and Message.
+* **BUG-032**: **Ticket Attachment Accepts Executable Files (.exe, .sh) Without Validation** — Support ticket file upload accepts dangerous executable files (`.exe`, `.sh`) without type whitelisting.
+* **BUG-033**: **Support FAQ Accordions Cannot Be Toggled via Keyboard (Enter/Space)** — FAQ accordion question headers ignore keyboard Enter and Space keys and lack `aria-expanded` attributes.
+* **BUG-034**: **Live Chat Message Exceeding 100 Characters Crashes Chat Window** — Sending messages over 100 characters in simulated live chat triggers recursion crash `RangeError: Maximum call stack size exceeded`.
+* **BUG-035**: **Support Priority Badges Have Swapped Color Semantics (Urgent is Green, Low is Red)** — Ticket priority badges invert color semantics with Urgent shown in calm green and Low shown in alarming red.
+* **BUG-036**: **'Move All to Cart' from Wishlist Fails to Remove Items from Wishlist** — Clicking "Move All to Bag" copies items into cart but fails to clear them from Wishlist, creating duplicates.
+* **BUG-037**: **Moving Out-of-Stock Product from Wishlist to Cart Bypasses Stock Check** — Moving out-of-stock Product #4 (Headphones Pro) from Wishlist to bag bypasses catalog inventory checks.
+* **BUG-038**: **Navbar Wishlist Badge Counter Remains at 0 When Items Are Added** — Top navbar Wishlist heart icon badge remains permanently frozen at `0` regardless of saved wishlist items.
+* **BUG-039**: **Wishlist 'Sort by Price' Performs Lexicographical String Sort Instead of Numeric Sort** — Wishlist sorting by price sorts prices as text strings, placing `$129.99` before `$29.99` alphabetically.
+* **BUG-040**: **Removed Wishlist Items Reappear After Navigating to Store and Back** — Removing an item from Wishlist is temporary; navigating to Store and returning to Wishlist restores the removed item.
