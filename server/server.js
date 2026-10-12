@@ -175,6 +175,13 @@ const server = http.createServer(async (req, res) => {
     const candidate = await Candidate.findOne({ token });
     if (!candidate) return sendJson(res, 401, { error: 'Unauthorized or invalid session token' });
 
+    // Lockdown: Prevent logging bugs after assessment has been submitted
+    if (candidate.status === 'submitted' || candidate.status === 'reviewed') {
+      return sendJson(res, 403, {
+        error: 'Assessment has already been submitted and concluded. Further bug reports are locked.'
+      });
+    }
+
     // Server-side ground-truth matching
     const match = matchCandidateReport(body.title, body.stepsToReproduce, body.actualResult);
     const matchedBugId = match.matchedBug ? match.matchedBug.id : null;
@@ -216,8 +223,17 @@ const server = http.createServer(async (req, res) => {
     const candidate = await Candidate.findOne({ token: body.token });
     if (!candidate) return sendJson(res, 401, { error: 'Invalid token' });
 
-    await Candidate.finalizeSubmission(candidate._id);
-    return sendJson(res, 200, { success: true });
+    if (candidate.status === 'submitted' || candidate.status === 'reviewed') {
+      return sendJson(res, 200, {
+        success: true,
+        alreadySubmitted: true,
+        message: 'Assessment already finalized.',
+        candidate
+      });
+    }
+
+    const updated = await Candidate.finalizeSubmission(candidate._id);
+    return sendJson(res, 200, { success: true, candidate: updated });
   }
 
   // 6. Products Catalog: GET /api/products

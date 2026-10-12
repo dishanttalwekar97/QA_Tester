@@ -52,6 +52,18 @@ function App() {
   const [adminSortOrder, setAdminSortOrder] = useState('desc'); // 'desc' | 'asc'
   const [adminSearchTerm, setAdminSearchTerm] = useState('');
   const [heroSlide, setHeroSlide] = useState(0);
+  const [showCompletedReports, setShowCompletedReports] = useState(false);
+
+  // Helper flag for submitted assessment
+  const isSubmitted = Boolean(candidate && (candidate.status === 'submitted' || candidate.status === 'reviewed'));
+
+  // Route Protection: Prevent submitted candidates from navigating back to store or cart
+  useEffect(() => {
+    if (isSubmitted && (route === 'store' || route === 'cart')) {
+      showToast('Assessment already submitted. Store access is concluded.', 'info');
+      setRoute('completed');
+    }
+  }, [route, isSubmitted]);
 
   const heroSlides = [
     {
@@ -306,8 +318,21 @@ function App() {
     setIsAdminAuthenticated(false);
     sessionStorage.removeItem('evaluator_auth');
     sessionStorage.removeItem('qa_admin_token');
-    setRoute('store');
+    setRoute(isSubmitted ? 'completed' : 'store');
     showToast('Evaluator portal locked.', 'info');
+  };
+
+  const handleExitCandidateSession = () => {
+    sessionStorage.removeItem('qa_candidate_token');
+    if (window.history.replaceState) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    setCandidate(null);
+    setCart([]);
+    setMyReports([]);
+    setShowCompletedReports(false);
+    setRoute('brief');
+    showToast('Candidate session concluded. Ready for next applicant.', 'info');
   };
 
   // --- STORE ACTIONS & SEEDED BUGS ---
@@ -381,6 +406,11 @@ function App() {
 
   const handleSearchSubmit = (e) => {
     if (e) e.preventDefault();
+    if (isSubmitted) {
+      showToast('Assessment submitted. Storefront is locked.', 'info');
+      setRoute('completed');
+      return;
+    }
     // BUG-009: Special characters trigger 500 error modal crash
     if (searchQuery.includes('%') || searchQuery.includes('?') || searchQuery.includes("'")) {
       setError500Modal(`Unhandled SQLError: Syntax error near unexpected character token: ${searchQuery}`);
@@ -487,6 +517,10 @@ function App() {
       alert('No active candidate session.');
       return;
     }
+    if (isSubmitted) {
+      showToast('Assessment already submitted. New bug reports cannot be logged.', 'error');
+      return;
+    }
 
     const vp = `${window.innerWidth}x${window.innerHeight}`;
     const envInfo = `Viewport: ${vp} | UserAgent: ${navigator.userAgent}`;
@@ -505,9 +539,16 @@ function App() {
         environmentInfo: envInfo
       })
     })
-    .then(res => res.json())
+    .then(res => {
+      if (res.status === 403) {
+        showToast('Assessment is concluded. Bug submissions are locked.', 'error');
+        setRoute('completed');
+        return null;
+      }
+      return res.json();
+    })
     .then(data => {
-      if (data.success) {
+      if (data && data.success) {
         setBugForm({
           title: '',
           category: 'Business Logic',
@@ -524,6 +565,12 @@ function App() {
   };
 
   const handleFinalizeAssessment = () => {
+    if (isSubmitted) {
+      showToast('Assessment has already been finalized and submitted.', 'info');
+      setRoute('completed');
+      return;
+    }
+
     const count = myReports.length;
     const confirmed = confirm(
       `Are you sure you want to finalize your assessment?\n\n` +
@@ -540,9 +587,17 @@ function App() {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
+          const updatedCandidate = data.candidate || { ...candidate, status: 'submitted' };
+          setCandidate(updatedCandidate);
           setDrawerOpen(false);
           setRoute('completed');
+          showToast('Assessment submitted and finalized successfully.', 'success');
+        } else {
+          showToast(data.error || 'Failed to finalize assessment.', 'error');
         }
+      })
+      .catch(err => {
+        showToast('Network error during finalization: ' + err.message, 'error');
       });
     }
   };
@@ -571,7 +626,13 @@ function App() {
       h('div', { className: 'cliq-topbar-left' },
         h('span', {
           className: 'cliq-topbar-luxury-tag',
-          onClick: () => setRoute('store')
+          onClick: () => {
+            if (isSubmitted) {
+              setRoute('completed');
+            } else {
+              setRoute('store');
+            }
+          }
         }, '💎 ShopPulse Luxury'),
         candidate && h('span', { style: { color: '#888894', fontSize: '0.74rem' } },
           `Candidate: ${candidate.fullName} • `,
@@ -579,7 +640,7 @@ function App() {
         )
       ),
       h('div', { className: 'cliq-topbar-right' },
-        candidate && h('button', {
+        candidate && !isSubmitted && h('button', {
           className: 'cliq-topbar-link',
           onClick: () => { setDrawerOpen(true); setDrawerTab('guide'); }
         }, '🎯 4 Student Missions Checklist'),
@@ -593,19 +654,25 @@ function App() {
             setRoute('admin');
             if (isAdminAuthenticated) loadAdminCandidates();
           }
-        }, '🔒 Evaluator Portal') : h('span', { style: { color: '#facc15', fontSize: '0.74rem', fontWeight: 600 } }, '● Active Session')
+        }, '🔒 Evaluator Portal') : (
+          isSubmitted ? (
+            h('span', { style: { color: '#4ade80', fontSize: '0.74rem', fontWeight: 600 } }, '● Submitted')
+          ) : (
+            h('span', { style: { color: '#facc15', fontSize: '0.74rem', fontWeight: 600 } }, '● Active Session')
+          )
+        )
       )
     ),
 
     // Candidate Session Watermark Bar
-    candidate && route !== 'admin' && route !== 'admin_detail' && h('div', { className: 'candidate-bar' },
+    candidate && route !== 'admin' && route !== 'admin_detail' && h('div', { className: 'candidate-bar', style: isSubmitted ? { background: '#1e293b' } : {} },
       h('div', null,
         h('span', { style: { opacity: 0.8 } }, 'QA Candidate Session: '),
         h('strong', null, candidate.fullName),
         h('span', { style: { opacity: 0.6, marginLeft: 8 } }, `(${candidate.token})`)
       ),
       h('div', { style: { display: 'flex', gap: 14, alignItems: 'center' } },
-        h('button', {
+        !isSubmitted && h('button', {
           onClick: () => { setDrawerOpen(true); setDrawerTab('guide'); },
           style: { background: '#da1c5c', border: 'none', color: 'white', padding: '3px 10px', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }
         }, '🎯 4 Student Missions Checklist'),
@@ -613,7 +680,11 @@ function App() {
           onClick: () => setRoute('brief'),
           style: { background: 'none', border: 'none', color: '#93c5fd', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem' }
         }, 'View PRD Specifications'),
-        h('span', { style: { color: '#facc15', fontWeight: 600 } }, 'Status: In Progress')
+        isSubmitted ? (
+          h('span', { style: { color: '#4ade80', fontWeight: 700 } }, '● Status: Submitted (Concluded)')
+        ) : (
+          h('span', { style: { color: '#facc15', fontWeight: 600 } }, 'Status: In Progress')
+        )
       )
     ),
 
@@ -626,7 +697,17 @@ function App() {
     h('header', { className: 'navbar' },
       h('div', { className: 'nav-container' },
         // Logo
-        h('div', { className: 'cliq-logo-wrap', onClick: () => setRoute('store') },
+        h('div', {
+          className: 'cliq-logo-wrap',
+          onClick: () => {
+            if (isSubmitted) {
+              showToast('Assessment submitted. Storefront is locked.', 'info');
+              setRoute('completed');
+            } else {
+              setRoute('store');
+            }
+          }
+        },
           h('div', { className: 'cliq-logo-pulse' },
             h('span', { className: 'logo-white' }, 'SHOP'),
             h('span', { className: 'logo-accent' }, 'PULSE')
@@ -638,6 +719,11 @@ function App() {
           h('button', {
             className: 'cliq-dropdown-pill',
             onClick: () => {
+              if (isSubmitted) {
+                showToast('Assessment submitted. Storefront is locked.', 'info');
+                setRoute('completed');
+                return;
+              }
               setRoute('store');
               const el = document.getElementById('shop-drop-section');
               if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -646,6 +732,11 @@ function App() {
           h('button', {
             className: 'cliq-dropdown-pill',
             onClick: () => {
+              if (isSubmitted) {
+                showToast('Assessment submitted. Storefront is locked.', 'info');
+                setRoute('completed');
+                return;
+              }
               setRoute('store');
               const el = document.getElementById('shop-drop-section');
               if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -748,7 +839,7 @@ function App() {
     toast && h('div', { className: `toast-box ${toast.type === 'error' ? 'toast-error' : toast.type === 'success' ? 'toast-success' : ''}` }, toast.message),
 
     // CANDIDATE FLOATING BUG REPORT DRAWER (STRICT BLACK-BOX)
-    candidate && route !== 'admin' && route !== 'admin_detail' && h('div', null,
+    candidate && !isSubmitted && route !== 'admin' && route !== 'admin_detail' && h('div', null,
       h('button', {
         className: 'bug-fab-btn',
         onClick: () => setDrawerOpen(true),
@@ -794,7 +885,7 @@ function App() {
           drawerTab === 'guide' && renderMissionsTab(),
           drawerTab === 'my' && renderMyReportsTab(),
 
-          h('div', { style: { padding: '16px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', textAlign: 'right' } },
+          !isSubmitted && h('div', { style: { padding: '16px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', textAlign: 'right' } },
             h('button', {
               className: 'btn btn-primary btn-sm',
               style: { background: '#059669' },
@@ -835,17 +926,23 @@ function App() {
               h('div', { style: { fontSize: '1.15rem', fontWeight: 800, color: '#1e1b4b' } }, `${candidate.fullName} (${candidate.email})`),
               h('div', { style: { fontSize: '0.8rem', color: '#64748b', marginTop: 4 } }, `Status: ${candidate.status === 'submitted' || candidate.status === 'reviewed' ? 'Completed & Submitted' : 'In Progress'} • Token: ${candidate.token}`)
             ),
-            h('button', {
-              className: 'btn btn-primary',
-              style: candidate.status === 'submitted' || candidate.status === 'reviewed' ? { background: '#dc2626' } : {},
-              onClick: () => {
-                if (candidate.status === 'submitted' || candidate.status === 'reviewed') {
-                  setRoute('completed');
-                } else {
-                  setRoute('store');
+            h('div', { style: { display: 'flex', gap: 10 } },
+              h('button', {
+                className: 'btn btn-primary',
+                style: isSubmitted ? { background: '#dc2626' } : {},
+                onClick: () => {
+                  if (isSubmitted) {
+                    setRoute('completed');
+                  } else {
+                    setRoute('store');
+                  }
                 }
-              }
-            }, candidate.status === 'submitted' || candidate.status === 'reviewed' ? 'View Submitted Debrief ➔' : 'Resume Assessment Store ➔')
+              }, isSubmitted ? 'View Submitted Debrief ➔' : 'Resume Assessment Store ➔'),
+              isSubmitted && h('button', {
+                className: 'btn btn-secondary',
+                onClick: handleExitCandidateSession
+              }, 'Start New Session')
+            )
           )
         ) : (
           h('form', {
@@ -968,7 +1065,11 @@ function App() {
           )
         ),
         candidate && h('div', { style: { marginTop: 24, textAlign: 'right' } },
-          h('button', { className: 'btn btn-primary', onClick: () => setRoute('store') }, 'Go to Store Playground ➔')
+          isSubmitted ? (
+            h('button', { className: 'btn btn-secondary', onClick: () => setRoute('completed') }, 'View Submitted Debrief ➔')
+          ) : (
+            h('button', { className: 'btn btn-primary', onClick: () => setRoute('store') }, 'Go to Store Playground ➔')
+          )
         )
       )
     );
@@ -1372,14 +1473,34 @@ function App() {
   }
 
   function renderCompletedView() {
-    return h('div', { className: 'container', style: { maxWidth: 580, textAlign: 'center', background: 'white', padding: 48, borderRadius: 20, border: '1px solid #e2e8f0', marginTop: 40 } },
-      h('div', { style: { width: 72, height: 72, background: '#dcfce7', color: '#16a34a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.2rem', margin: '0 auto 20px auto' } }, '✓'),
-      h('h1', { style: { fontSize: '1.8rem', fontWeight: 800, marginBottom: 8 } }, 'Assessment Completed'),
-      h('p', { style: { color: '#64748b', marginBottom: 24 } }, `Thank you, ${candidate.fullName}. Your reports have been safely recorded in MongoDB for evaluation.`),
-      h('div', { style: { background: '#f1f5f9', borderRadius: 12, padding: 20, marginBottom: 28, textAlign: 'left' } },
+    if (!candidate) return renderBriefView();
+
+    return h('div', { className: 'container', style: { maxWidth: 620, textAlign: 'center', background: 'white', padding: '40px 32px', borderRadius: 20, border: '1px solid #e2e8f0', marginTop: 40, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' } },
+      h('div', { style: { width: 72, height: 72, background: '#dcfce7', color: '#16a34a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.2rem', margin: '0 auto 16px auto' } }, '✓'),
+      h('h1', { style: { fontSize: '1.8rem', fontWeight: 800, marginBottom: 8, color: '#0f172a' } }, 'Assessment Concluded & Submitted'),
+      h('p', { style: { color: '#64748b', marginBottom: 20, fontSize: '0.95rem' } }, `Thank you, ${candidate.fullName}. Your reports have been safely recorded in MongoDB for evaluation.`),
+
+      // Concluded Session Security Notice
+      h('div', { style: { background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 16px', marginBottom: 20, fontSize: '0.85rem', color: '#92400e', textAlign: 'left', display: 'flex', gap: 10, alignItems: 'center' } },
+        h('span', { style: { fontSize: '1.3rem' } }, '🔒'),
+        h('div', null,
+          h('strong', null, 'Testing Session Closed: '),
+          'Your assessment has been officially submitted for grading. Storefront access and bug reporting have been locked to preserve evaluation integrity.'
+        )
+      ),
+
+      h('div', { style: { background: '#f8fafc', borderRadius: 12, padding: 20, marginBottom: 24, textAlign: 'left', border: '1px solid #e2e8f0' } },
         h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 8 } },
-          h('span', { style: { color: '#64748b' } }, 'Candidate:'),
+          h('span', { style: { color: '#64748b' } }, 'Applicant:'),
           h('strong', null, candidate.fullName)
+        ),
+        h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 8 } },
+          h('span', { style: { color: '#64748b' } }, 'Registered Email:'),
+          h('span', { style: { color: '#1e293b', fontWeight: 600 } }, candidate.email)
+        ),
+        h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 8 } },
+          h('span', { style: { color: '#64748b' } }, 'Session Token:'),
+          h('code', { style: { color: '#4338ca', fontWeight: 700 } }, candidate.token)
         ),
         h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 8 } },
           h('span', { style: { color: '#64748b' } }, 'Issues Logged:'),
@@ -1387,11 +1508,48 @@ function App() {
         ),
         h('div', { style: { display: 'flex', justifyContent: 'space-between' } },
           h('span', { style: { color: '#64748b' } }, 'Session Status:'),
-          h('span', { style: { background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 700 } }, 'Submitted')
+          h('span', { style: { background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 700 } }, 'Submitted & Locked')
         )
       ),
-      h('div', { style: { display: 'flex', gap: 12, justifyContent: 'center' } },
-        h('button', { className: 'btn btn-secondary btn-sm', onClick: () => setRoute('store') }, 'Return to Store')
+
+      // Concluded Navigation Actions (Return to Store is removed)
+      h('div', { style: { display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' } },
+        h('button', {
+          className: 'btn btn-secondary btn-sm',
+          onClick: () => setShowCompletedReports(!showCompletedReports)
+        }, showCompletedReports ? '▲ Hide Submitted Reports' : `📋 View Submitted Reports (${myReports.length})`),
+        h('button', {
+          className: 'btn btn-secondary btn-sm',
+          onClick: () => setRoute('brief')
+        }, '📄 Review PRD Specs'),
+        h('button', {
+          className: 'btn btn-sm',
+          style: { background: '#ef4444', color: '#ffffff', border: 'none' },
+          onClick: handleExitCandidateSession
+        }, '🚪 Conclude & Exit Session')
+      ),
+
+      // Expandable read-only summary of candidate's own reports (blind preserved)
+      showCompletedReports && h('div', { style: { marginTop: 24, textAlign: 'left', borderTop: '1px solid #e2e8f0', paddingTop: 20 } },
+        h('h3', { style: { fontSize: '1.05rem', fontWeight: 700, marginBottom: 14, color: '#1e293b' } }, `Your Logged Reports (${myReports.length})`),
+        myReports.length === 0 ? (
+          h('p', { style: { color: '#94a3b8', fontSize: '0.88rem' } }, 'No bug reports were recorded during this session.')
+        ) : (
+          h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' } },
+            myReports.map((rep, idx) =>
+              h('div', {
+                key: rep._id || idx,
+                style: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12 }
+              },
+                h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 } },
+                  h('strong', { style: { fontSize: '0.88rem', color: '#0f172a' } }, `#${rep.reportNumber || (idx + 1)} ${rep.title}`),
+                  h('span', { style: { fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: '#e0e7ff', color: '#4338ca' } }, rep.severity || 'Medium')
+                ),
+                h('div', { style: { fontSize: '0.78rem', color: '#64748b' } }, `Category: ${rep.category}`)
+              )
+            )
+          )
+        )
       )
     );
   }

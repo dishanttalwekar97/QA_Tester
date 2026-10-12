@@ -215,7 +215,56 @@ async function runSecurityTests() {
     }
     console.log('✓ [DELETE] Authenticated DELETE /api/admin/candidates/:id cleanly deleted candidate & all associated bug reports');
 
-    console.log('\n🎉 ALL 14 SECURITY, DELETION AND CONFIDENTIALITY TESTS PASSED!');
+    // 15. Submission Lockdown: Post-Finalization Bug Logging Rejection
+    const lockdownEmail = `lockdown-${Date.now()}@gmail.com`;
+    const regLockdown = await makeRequest(port, '/api/candidate/start', 'POST', {}, {
+      fullName: 'Lockdown Tester',
+      email: lockdownEmail
+    });
+    const lockToken = regLockdown.body.token;
+    const lockCandId = regLockdown.body.candidate._id;
+
+    // Log 1 bug report while active
+    const activeReport = await makeRequest(port, '/api/candidate/report', 'POST', {}, {
+      token: lockToken,
+      title: 'Cart item count off-by-one',
+      category: 'UI/UX',
+      stepsToReproduce: 'Add item',
+      expectedResult: 'Shows 1',
+      actualResult: 'Shows 0'
+    });
+    if (activeReport.statusCode !== 201) throw new Error('Failed to log bug before finalization');
+
+    // Finalize assessment
+    const finalizeRes = await makeRequest(port, '/api/candidate/finalize', 'POST', {}, { token: lockToken });
+    if (finalizeRes.statusCode !== 200 || !finalizeRes.body.success || finalizeRes.body.candidate.status !== 'submitted') {
+      throw new Error('Failed to finalize assessment');
+    }
+    console.log('✓ [SUBMISSION LOCKDOWN] Assessment successfully finalized (status: submitted)');
+
+    // Attempt to submit another bug after finalization -> MUST be rejected with 403 Forbidden!
+    const postFinalizeBug = await makeRequest(port, '/api/candidate/report', 'POST', {}, {
+      token: lockToken,
+      title: 'Post-submission unauthorized bug',
+      category: 'Security',
+      stepsToReproduce: 'Attempt submitting after test finished'
+    });
+    if (postFinalizeBug.statusCode !== 403) {
+      throw new Error(`Expected 403 Forbidden for post-submission bug report, got ${postFinalizeBug.statusCode}`);
+    }
+    console.log('✓ [SUBMISSION LOCKDOWN] Subsequent POST /api/candidate/report rejected with 403 Forbidden');
+
+    // Attempt to re-finalize -> recognizes already submitted
+    const reFinalize = await makeRequest(port, '/api/candidate/finalize', 'POST', {}, { token: lockToken });
+    if (!reFinalize.body.alreadySubmitted) {
+      throw new Error('Expected alreadySubmitted flag when finalizing again');
+    }
+    console.log('✓ [SUBMISSION LOCKDOWN] Duplicate finalization recognized as already submitted');
+
+    // Clean up lockdown tester
+    await makeRequest(port, `/api/admin/candidates/${lockCandId}`, 'DELETE', { 'X-Admin-Token': freshAdminToken });
+
+    console.log('\n🎉 ALL 15 SECURITY, DELETION AND CONFIDENTIALITY TESTS PASSED!');
   } finally {
     server.close();
   }
