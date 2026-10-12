@@ -86,6 +86,13 @@ async function runSecurityTests() {
     }
     console.log('✓ [SECURITY] POST /api/admin/candidates/:id/grade rejected with 401 Unauthorized');
 
+    // 5. Unauthenticated Admin Delete Candidate must be rejected
+    const unauthDelete = await makeRequest(port, '/api/admin/candidates/dummy-id', 'DELETE');
+    if (unauthDelete.statusCode !== 401) {
+      throw new Error(`Expected 401 for unauthenticated delete candidate, got ${unauthDelete.statusCode}`);
+    }
+    console.log('✓ [SECURITY] DELETE /api/admin/candidates/:id rejected with 401 Unauthorized');
+
     // 5. Admin Login with Wrong PIN must fail
     const wrongLogin = await makeRequest(port, '/api/admin/login', 'POST', {}, { pin: 'wrong-passcode' });
     if (wrongLogin.statusCode !== 401 || wrongLogin.body.success) {
@@ -171,7 +178,44 @@ async function runSecurityTests() {
     }
     console.log('✓ [CONFIDENTIALITY] Candidate reports strictly conceal matchedBugId and answer key (Blind Testing preserved)');
 
-    console.log('\n🎉 ALL 12 SECURITY AND CONFIDENTIALITY TESTS PASSED!');
+    // 13. Bug report with empty expectedResult and actualResult (now optional)
+    const optionalFieldsReport = await makeRequest(port, '/api/candidate/report', 'POST', {}, {
+      token: candToken,
+      title: 'Checkout button unresponsive when terms unchecked',
+      category: 'Functional',
+      stepsToReproduce: 'Uncheck terms and click checkout',
+      expectedResult: '',
+      actualResult: ''
+    });
+    if (optionalFieldsReport.statusCode !== 201) {
+      throw new Error('Bug report with optional expected/actual result failed to save!');
+    }
+    console.log('✓ [OPTIONAL FIELDS] Bug report successfully submitted with empty expectedResult and actualResult');
+
+    // 14. Authenticated Admin Delete Candidate & Cascaded Bug Reports
+    const adminLoginAgain = await makeRequest(port, '/api/admin/login', 'POST', {}, { pin: pinToTest });
+    const freshAdminToken = adminLoginAgain.body.adminToken;
+    const candId = reg1.body.candidate._id;
+
+    const deleteRes = await makeRequest(port, `/api/admin/candidates/${candId}`, 'DELETE', { 'X-Admin-Token': freshAdminToken });
+    if (deleteRes.statusCode !== 200 || !deleteRes.body.success) {
+      throw new Error(`Expected 200 for candidate delete, got ${deleteRes.statusCode}`);
+    }
+
+    // Verify candidate is gone
+    const checkDeletedCand = await makeRequest(port, `/api/admin/candidates/${candId}`, 'GET', { 'X-Admin-Token': freshAdminToken });
+    if (checkDeletedCand.statusCode !== 404) {
+      throw new Error(`Candidate should be 404 after deletion, got ${checkDeletedCand.statusCode}`);
+    }
+
+    // Verify candidate's reports are deleted
+    const checkReports = await makeRequest(port, `/api/candidate/my-reports?token=${candToken}`, 'GET');
+    if (checkReports.body.reports && checkReports.body.reports.length !== 0) {
+      throw new Error('Candidate bug reports were not cascade-deleted!');
+    }
+    console.log('✓ [DELETE] Authenticated DELETE /api/admin/candidates/:id cleanly deleted candidate & all associated bug reports');
+
+    console.log('\n🎉 ALL 14 SECURITY, DELETION AND CONFIDENTIALITY TESTS PASSED!');
   } finally {
     server.close();
   }

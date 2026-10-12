@@ -186,6 +186,48 @@ function App() {
       .catch(() => {});
   };
 
+  const handleDeleteCandidate = (id, fullName) => {
+    const token = sessionStorage.getItem('qa_admin_token');
+    if (!token) {
+      setIsAdminAuthenticated(false);
+      setRoute('admin');
+      return;
+    }
+
+    const confirmed = confirm(`Are you sure you want to permanently delete candidate "${fullName}" and all their bug reports?\n\nThis action cannot be undone.`);
+    if (!confirmed) return;
+
+    fetch(`/api/admin/candidates/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Token': token
+      }
+    })
+      .then(res => {
+        if (res.status === 401) {
+          setIsAdminAuthenticated(false);
+          sessionStorage.removeItem('evaluator_auth');
+          sessionStorage.removeItem('qa_admin_token');
+          setRoute('admin');
+          setAdminAuthError('Session expired. Please log in.');
+          return null;
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (data && data.success) {
+          showToast(`Candidate "${fullName}" deleted successfully.`, 'success');
+          loadAdminCandidates();
+        } else if (data && data.error) {
+          showToast(`Delete failed: ${data.error}`, 'error');
+        }
+      })
+      .catch(() => {
+        showToast('Error communicating with server during deletion.', 'error');
+      });
+  };
+
   const handleAdminLogin = (e) => {
     if (e) e.preventDefault();
     const pin = adminPasswordInput.trim();
@@ -1239,26 +1281,24 @@ function App() {
 
         h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 } },
           h('div', null,
-            h('label', { className: 'form-label', style: { fontSize: '0.8rem', fontWeight: 700, color: '#166534' } }, 'Expected Behavior *'),
+            h('label', { className: 'form-label', style: { fontSize: '0.8rem', fontWeight: 700, color: '#166534' } }, 'Expected Behavior'),
             h('textarea', {
               className: 'form-control',
               rows: 2,
-              placeholder: 'What should have happened?',
+              placeholder: 'What should have happened? (optional)',
               value: bugForm.expected,
               onChange: e => setBugForm({ ...bugForm, expected: e.target.value }),
-              required: true,
               style: { padding: '6px 10px', fontSize: '0.83rem' }
             })
           ),
           h('div', null,
-            h('label', { className: 'form-label', style: { fontSize: '0.8rem', fontWeight: 700, color: '#991b1b' } }, 'Actual Problem *'),
+            h('label', { className: 'form-label', style: { fontSize: '0.8rem', fontWeight: 700, color: '#991b1b' } }, 'Actual Problem'),
             h('textarea', {
               className: 'form-control',
               rows: 2,
-              placeholder: 'What actually went wrong?',
+              placeholder: 'What actually went wrong? (optional)',
               value: bugForm.actual,
               onChange: e => setBugForm({ ...bugForm, actual: e.target.value }),
-              required: true,
               style: { padding: '6px 10px', fontSize: '0.83rem' }
             })
           )
@@ -1589,7 +1629,14 @@ function App() {
 
                   // Action
                   h('td', null,
-                    h('button', { className: 'btn btn-primary btn-sm', onClick: () => loadCandidateDetail(c._id) }, 'Review & Grade ➔')
+                    h('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+                      h('button', { className: 'btn btn-primary btn-sm', onClick: () => loadCandidateDetail(c._id) }, 'Review & Grade ➔'),
+                      h('button', {
+                        className: 'btn btn-danger btn-sm',
+                        onClick: () => handleDeleteCandidate(c._id, c.fullName),
+                        style: { background: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }
+                      }, '🗑️ Delete')
+                    )
                   )
                 );
               })

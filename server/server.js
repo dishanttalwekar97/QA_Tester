@@ -419,7 +419,22 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, { success: true });
   }
 
-  // 14. Admin Bug Catalog: GET /api/admin/bug-catalog
+  // 14. Admin Delete Candidate: DELETE /api/admin/candidates/:id
+  if (pathname.startsWith('/api/admin/candidates/') && method === 'DELETE') {
+    if (!verifyAdminAuth(req, parsedUrl)) {
+      return sendJson(res, 401, { error: 'Unauthorized: Admin authentication required.' });
+    }
+
+    const id = pathname.split('/')[4];
+    const candidate = await Candidate.findById(id);
+    if (!candidate) return sendJson(res, 404, { error: 'Candidate not found' });
+
+    await Candidate.findByIdAndDelete(id);
+    await collections.bugReports.deleteMany({ candidateId: candidate._id });
+    return sendJson(res, 200, { success: true, message: 'Candidate and associated bug reports deleted successfully.' });
+  }
+
+  // 15. Admin Bug Catalog: GET /api/admin/bug-catalog
   if (pathname === '/api/admin/bug-catalog' && method === 'GET') {
     if (!verifyAdminAuth(req, parsedUrl)) {
       return sendJson(res, 401, { error: 'Unauthorized: Admin authentication required.' });

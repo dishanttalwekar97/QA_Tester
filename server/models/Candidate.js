@@ -45,6 +45,10 @@ class Candidate {
     return collections.candidates.findByIdAndUpdate(id, update, options);
   }
 
+  static async findByIdAndDelete(id) {
+    return collections.candidates.findByIdAndDelete(id);
+  }
+
   static async finalizeSubmission(candidateId) {
     return collections.candidates.findByIdAndUpdate(candidateId, {
       status: 'submitted',

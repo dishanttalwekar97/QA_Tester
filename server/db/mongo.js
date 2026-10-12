@@ -121,6 +121,14 @@ class MongoCollection {
     return docs.length;
   }
 
+  async findByIdAndDelete(id) {
+    const index = this.data.findIndex(doc => doc._id === id || doc.id === id);
+    if (index === -1) return null;
+    const removed = this.data.splice(index, 1)[0];
+    this._save();
+    return removed;
+  }
+
   async deleteMany(query = {}) {
     const initial = this.data.length;
     this.data = this.data.filter(doc => !this._match(doc, query));
