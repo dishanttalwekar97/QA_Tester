@@ -54,9 +54,9 @@ function App() {
 
   // Load Initial Session & Products
   useEffect(() => {
-    // Check URL parameters
+    // Check URL parameters or stored session
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
+    const token = params.get('token') || sessionStorage.getItem('qa_candidate_token');
     const path = window.location.pathname;
 
     if (path.startsWith('/admin')) {
@@ -82,6 +82,7 @@ function App() {
       .then(res => res.json())
       .then(data => {
         if (data.candidate) {
+          sessionStorage.setItem('qa_candidate_token', data.candidate.token);
           setCandidate(data.candidate);
           if (data.candidate.status === 'submitted' || data.candidate.status === 'reviewed') {
             setRoute('completed');
@@ -90,6 +91,8 @@ function App() {
             setRoute('store');
           }
           loadMyReports(token);
+        } else {
+          sessionStorage.removeItem('qa_candidate_token');
         }
       })
       .catch(() => {});
@@ -218,6 +221,10 @@ function App() {
       .then(data => {
         if (data && data.success) {
           showToast(`Candidate "${fullName}" deleted successfully.`, 'success');
+          if (selectedCandidateDetail && selectedCandidateDetail.candidate && (selectedCandidateDetail.candidate._id === id || selectedCandidateDetail.candidate.id === id)) {
+            setSelectedCandidateDetail(null);
+            setRoute('admin');
+          }
           loadAdminCandidates();
         } else if (data && data.error) {
           showToast(`Delete failed: ${data.error}`, 'error');
@@ -759,8 +766,25 @@ function App() {
               .then(res => res.json())
               .then(data => {
                 if (!data.success) {
+                  if (data.alreadyRegistered && data.candidate && data.candidate.status === 'in_progress') {
+                    const resume = confirm(
+                      `You already have an active assessment session in progress.\n\n` +
+                      `Applicant: ${data.candidate.fullName}\n` +
+                      `Email: ${data.candidate.email}\n\n` +
+                      `Would you like to resume your session now?`
+                    );
+                    if (resume) {
+                      sessionStorage.setItem('qa_candidate_token', data.candidate.token);
+                      window.history.replaceState(null, '', '?token=' + data.candidate.token);
+                      setCandidate(data.candidate);
+                      loadMyReports(data.candidate.token);
+                      setRoute('store');
+                      showToast('Resumed your active assessment session.', 'success');
+                      return;
+                    }
+                  }
                   alert(
-                    `⚠️ Duplicate Registration Blocked:\n\n` +
+                    `⚠️ Registration Blocked:\n\n` +
                     `${data.error || 'Each applicant must use a unique email address.'}`
                   );
                   showToast(data.error || 'This email is already in use.', 'error');
@@ -768,6 +792,8 @@ function App() {
                 }
 
                 if (data.candidate) {
+                  sessionStorage.setItem('qa_candidate_token', data.candidate.token);
+                  window.history.replaceState(null, '', '?token=' + data.candidate.token);
                   setCandidate(data.candidate);
                   loadMyReports(data.candidate.token);
                   setRoute('store');
@@ -1655,8 +1681,13 @@ function App() {
     if (!d) return null;
 
     return h('div', { className: 'container' },
-      h('div', { style: { marginBottom: 16 } },
-        h('button', { className: 'btn btn-secondary btn-sm', onClick: () => setRoute('admin') }, '← Back to All Candidates')
+      h('div', { style: { marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+        h('button', { className: 'btn btn-secondary btn-sm', onClick: () => setRoute('admin') }, '← Back to All Candidates'),
+        h('button', {
+          className: 'btn btn-danger btn-sm',
+          onClick: () => handleDeleteCandidate(d.candidate._id || d.candidate.id, d.candidate.fullName),
+          style: { background: '#ef4444', color: 'white', border: 'none', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }
+        }, '🗑️ Delete Candidate')
       ),
 
       h('div', { style: { background: 'white', padding: 24, borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 } },

@@ -69,7 +69,7 @@ class MongoCollection {
   }
 
   async findById(id) {
-    return this.data.find(doc => doc._id === id || doc.id === id) || null;
+    return this.data.find(doc => doc._id === id || doc.id === id || String(doc.id) === String(id)) || null;
   }
 
   async create(doc) {
@@ -94,7 +94,7 @@ class MongoCollection {
   }
 
   async findByIdAndUpdate(id, update, options = { new: true }) {
-    const index = this.data.findIndex(doc => doc._id === id || doc.id === id);
+    const index = this.data.findIndex(doc => doc._id === id || doc.id === id || String(doc.id) === String(id));
     if (index === -1) return null;
 
     const current = this.data[index];
@@ -122,7 +122,7 @@ class MongoCollection {
   }
 
   async findByIdAndDelete(id) {
-    const index = this.data.findIndex(doc => doc._id === id || doc.id === id);
+    const index = this.data.findIndex(doc => doc._id === id || doc.id === id || String(doc.id) === String(id));
     if (index === -1) return null;
     const removed = this.data.splice(index, 1)[0];
     this._save();

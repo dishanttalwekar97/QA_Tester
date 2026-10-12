@@ -98,6 +98,11 @@ async function testMern() {
   }
   console.log(`✓ Evaluator scorecard saved: Score 90%, Decision: ${updatedCand.reviewerDecision}`);
 
+  // 8. Clean up test candidate & reports so storage stays clean
+  const { collections } = require('./server/db/mongo');
+  await Candidate.findByIdAndDelete(cand._id);
+  await collections.bugReports.deleteMany({ candidateId: cand._id });
+
   console.log('\n🎉 ALL MERN CORE ARCHITECTURE TESTS PASSED WITH 100% SUCCESS!');
   process.exit(0);
 }

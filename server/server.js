@@ -34,69 +34,6 @@ async function initDatabase() {
       await collections.products.create(p);
     }
   }
-
-  // Ensure demo candidate exists
-  const demoCand = await Candidate.findOne({ token: 'demo-qa-alex' });
-  if (!demoCand) {
-    const cand = await Candidate.create({
-      fullName: 'Alex Chen',
-      email: 'alex.chen.qa@example.com',
-      token: 'demo-qa-alex'
-    });
-
-    const sampleReports = [
-      {
-        title: 'Cart allows negative item quantity, reducing the total payable amount',
-        category: 'Business Logic',
-        severity: 'Blocker',
-        steps: '1. Add item to cart\n2. In quantity box type -2\n3. Notice subtotal is reduced',
-        expected: 'Cart should only accept positive integers.',
-        actual: 'Line total becomes negative and reduces the order total.'
-      },
-      {
-        title: 'Coupon code SAVE20 can be stacked multiple times indefinitely',
-        category: 'Business Logic',
-        severity: 'Blocker',
-        steps: '1. Enter SAVE20 and click Apply\n2. Click Apply again\n3. Discount compounds',
-        expected: 'Coupon should apply once per transaction.',
-        actual: 'Each click deducts an additional 20% discount.'
-      },
-      {
-        title: 'Banner claims free shipping over $50 but cart charges $10 shipping',
-        category: 'Business Logic',
-        severity: 'Major',
-        steps: '1. Add $79 earbuds to cart\n2. Check shipping\n3. Charged $10',
-        expected: 'Shipping should be $0.00 for orders over $50.',
-        actual: 'System charges $10 shipping.'
-      },
-      {
-        title: 'Mechanical keyboard has a broken image link',
-        category: 'UI & Visual',
-        severity: 'Minor',
-        steps: '1. Look at product #6 on catalog\n2. Image fails to load',
-        expected: 'Product image should load properly.',
-        actual: 'Broken image 404 response.'
-      }
-    ];
-
-    for (const r of sampleReports) {
-      const match = matchCandidateReport(r.title, r.steps, r.actual);
-      await BugReport.create({
-        candidateId: cand._id,
-        title: r.title,
-        category: r.category,
-        severity: r.severity,
-        stepsToReproduce: r.steps,
-        expectedResult: r.expected,
-        actualResult: r.actual,
-        environmentInfo: 'Viewport: 1440x900 | Chrome 124',
-        matchedBugId: match.matchedBug ? match.matchedBug.id : null,
-        matchConfidence: match.confidence
-      });
-    }
-
-    await Candidate.finalizeSubmission(cand._id);
-  }
 }
 
 function parseJsonBody(req) {
@@ -110,6 +47,7 @@ function parseJsonBody(req) {
         resolve({});
       }
     });
+    req.on('error', () => resolve({}));
   });
 }
 
@@ -440,6 +378,11 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 401, { error: 'Unauthorized: Admin authentication required.' });
     }
     return sendJson(res, 200, { seededBugs: SEEDED_BUGS });
+  }
+
+  // 16. Unmatched API routes fallback
+  if (pathname.startsWith('/api/')) {
+    return sendJson(res, 404, { error: `Endpoint not found: ${method} ${pathname}` });
   }
 
   // --- STATIC CLIENT SERVING ---
