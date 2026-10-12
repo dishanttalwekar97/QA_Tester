@@ -51,6 +51,34 @@ function App() {
   const [adminSortKey, setAdminSortKey] = useState('reports'); // 'reports', 'score', 'date', 'name'
   const [adminSortOrder, setAdminSortOrder] = useState('desc'); // 'desc' | 'asc'
   const [adminSearchTerm, setAdminSearchTerm] = useState('');
+  const [heroSlide, setHeroSlide] = useState(0);
+
+  const heroSlides = [
+    {
+      tag: 'EXCLUSIVE OFFER',
+      title: 'MIN. 30% OFF',
+      subtitle: 'Extra 10% off your next dress haul & tech essentials',
+      badge: 'USE CODE: SAVE20',
+      btnText: 'SHOP NOW',
+      bgImg: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&auto=format&fit=crop&q=80'
+    },
+    {
+      tag: 'SPRING EDIT 2026',
+      title: 'CURATED DROPS',
+      subtitle: 'Next-Gen Gear For Creators & Professionals',
+      badge: 'FREE SHIPPING OVER $50',
+      btnText: 'EXPLORE DROP',
+      bgImg: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1600&auto=format&fit=crop&q=80'
+    },
+    {
+      tag: 'STUDIO EDITION',
+      title: 'PRECISION GEAR',
+      subtitle: 'Studio-Grade Sound & Ergonomic Workstation Essentials',
+      badge: 'LIMITED EDITION',
+      btnText: 'VIEW PRODUCTS',
+      bgImg: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&auto=format&fit=crop&q=80'
+    }
+  ];
 
   // Load Initial Session & Products
   useEffect(() => {
@@ -538,6 +566,37 @@ function App() {
   // --- RENDER SECTIONS ---
 
   return h('div', null,
+    // Tata CLiQ Luxury Utility Strip
+    h('div', { className: 'cliq-topbar' },
+      h('div', { className: 'cliq-topbar-left' },
+        h('span', {
+          className: 'cliq-topbar-luxury-tag',
+          onClick: () => setRoute('store')
+        }, '💎 ShopPulse Luxury'),
+        candidate && h('span', { style: { color: '#888894', fontSize: '0.74rem' } },
+          `Candidate: ${candidate.fullName} • `,
+          h('code', { style: { color: '#ccc' } }, candidate.token)
+        )
+      ),
+      h('div', { className: 'cliq-topbar-right' },
+        candidate && h('button', {
+          className: 'cliq-topbar-link',
+          onClick: () => { setDrawerOpen(true); setDrawerTab('guide'); }
+        }, '🎯 4 Student Missions Checklist'),
+        h('button', {
+          className: 'cliq-topbar-link',
+          onClick: () => setRoute('brief')
+        }, 'PRD Specifications'),
+        !candidate ? h('button', {
+          className: 'cliq-topbar-link',
+          onClick: () => {
+            setRoute('admin');
+            if (isAdminAuthenticated) loadAdminCandidates();
+          }
+        }, '🔒 Evaluator Portal') : h('span', { style: { color: '#facc15', fontSize: '0.74rem', fontWeight: 600 } }, '● Active Session')
+      )
+    ),
+
     // Candidate Session Watermark Bar
     candidate && route !== 'admin' && route !== 'admin_detail' && h('div', { className: 'candidate-bar' },
       h('div', null,
@@ -548,7 +607,7 @@ function App() {
       h('div', { style: { display: 'flex', gap: 14, alignItems: 'center' } },
         h('button', {
           onClick: () => { setDrawerOpen(true); setDrawerTab('guide'); },
-          style: { background: '#4f46e5', border: 'none', color: 'white', padding: '3px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }
+          style: { background: '#da1c5c', border: 'none', color: 'white', padding: '3px 10px', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }
         }, '🎯 4 Student Missions Checklist'),
         h('button', {
           onClick: () => setRoute('brief'),
@@ -563,26 +622,69 @@ function App() {
       h('span', null, '🚚 FLASH OFFER: Free Shipping on all orders over $50.00! Use code SAVE20 for 20% off.')
     ),
 
-    // Navbar
+    // Main Navbar (Tata CLiQ Luxury Dark Styling)
     h('header', { className: 'navbar' },
       h('div', { className: 'nav-container' },
-        h('div', { className: 'brand', onClick: () => setRoute('store') },
-          h('div', { className: 'brand-icon' }, 'SP'),
-          h('span', null, 'ShopPulse')
+        // Logo
+        h('div', { className: 'cliq-logo-wrap', onClick: () => setRoute('store') },
+          h('span', { className: 'cliq-logo-tata' }, 'TATA'),
+          h('div', { className: 'cliq-logo-pulse' },
+            h('span', { className: 'logo-white' }, 'SHOP'),
+            h('span', { className: 'logo-accent' }, 'PULSE')
+          )
         ),
-        h('div', { className: 'nav-links' },
+
+        // Dropdown Menu Links
+        h('div', { className: 'cliq-nav-categories' },
           h('button', {
+            className: 'cliq-dropdown-pill',
             onClick: () => {
-              if (candidate && (candidate.status === 'submitted' || candidate.status === 'reviewed')) {
-                showToast('Assessment already submitted. You cannot re-enter the testing store.', 'error');
-                setRoute('completed');
-              } else {
-                setRoute('store');
-              }
-            },
-            className: 'btn btn-secondary btn-sm',
-            style: { background: 'none', border: 'none', color: '#475569', fontWeight: 600 }
-          }, 'Catalog'),
+              setRoute('store');
+              const el = document.getElementById('shop-drop-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 'Categories', h('span', { className: 'arrow' }, '▼')),
+          h('button', {
+            className: 'cliq-dropdown-pill',
+            onClick: () => {
+              setRoute('store');
+              const el = document.getElementById('shop-drop-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 'Brands', h('span', { className: 'arrow' }, '▼'))
+        ),
+
+        // Header Integrated Search Form (BUG-009 triggers on %, ?, ')
+        h('form', { className: 'cliq-search-form', onSubmit: handleSearchSubmit },
+          h('div', { className: 'cliq-search-box' },
+            h('span', { className: 'cliq-search-icon' }, '🔍'),
+            h('input', {
+              type: 'text',
+              className: 'cliq-search-input',
+              placeholder: 'Search for Categories, Products & Brands...',
+              value: searchQuery,
+              onChange: (e) => setSearchQuery(e.target.value)
+            }),
+            h('span', {
+              className: 'cliq-mic-icon',
+              title: 'Voice Search',
+              onClick: () => showToast('Voice search listening...', 'info')
+            }, '🎙️')
+          )
+        ),
+
+        // Right Nav Actions
+        h('div', { className: 'cliq-nav-actions' },
+          h('button', {
+            className: 'cliq-action-icon-btn',
+            title: 'Notifications',
+            onClick: () => showToast('No new notifications.', 'info')
+          }, '🔔'),
+          h('button', {
+            className: 'cliq-action-icon-btn',
+            title: 'Wishlist',
+            onClick: () => showToast('Wishlist: 0 items saved.', 'info')
+          }, '🤍'),
           h('button', {
             onClick: () => {
               if (candidate && (candidate.status === 'submitted' || candidate.status === 'reviewed')) {
@@ -594,16 +696,10 @@ function App() {
             },
             className: 'cart-btn'
           },
-            h('span', null, '🛒 Cart'),
+            h('span', { className: 'cart-icon-symbol' }, '🛍️'),
+            h('span', null, 'Bag'),
             h('span', { className: 'cart-badge' }, totalCartCount)
-          ),
-          !candidate && h('button', {
-            onClick: () => {
-              setRoute('admin');
-              if (isAdminAuthenticated) loadAdminCandidates();
-            },
-            style: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.85rem', cursor: 'pointer' }
-          }, '🔒 Evaluator Portal')
+          )
         )
       )
     ),
@@ -881,24 +977,89 @@ function App() {
 
   function renderStoreView() {
     return h('div', { className: 'container' },
-      // Hero Banner
-      h('div', { style: { background: 'linear-gradient(135deg, #1e1b4b, #312e81)', color: 'white', padding: '36px 32px', borderRadius: 16, marginBottom: 32 } },
-        h('span', { style: { background: 'rgba(255,255,255,0.15)', fontSize: '0.8rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, display: 'inline-block', marginBottom: 10 } }, 'SPRING COLLECTION 2026'),
-        h('h1', { style: { fontSize: '2.2rem', fontWeight: 800 } }, 'Next-Gen Gear For Creators & Professionals'),
-        h('p', { style: { opacity: 0.85, marginTop: 8 } }, 'Explore noise-canceling audio, ergonomic workstations, and high-precision productivity accessories.')
+      // Tata CLiQ Style Wide Hero Carousel
+      h('div', { className: 'cliq-hero-wrapper' },
+        h('div', { className: 'cliq-hero-stage' },
+          // Left Preview Card
+          h('div', { className: 'cliq-hero-preview-left' },
+            h('img', {
+              src: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop&q=80',
+              alt: 'Fashion Preview'
+            })
+          ),
+
+          // Main Center Banner
+          h('div', { className: 'cliq-hero-main' },
+            h('img', {
+              className: 'cliq-hero-bg-img',
+              src: heroSlides[heroSlide].bgImg,
+              alt: 'Hero Banner'
+            }),
+            h('div', { className: 'cliq-hero-overlay' }),
+            h('div', { className: 'cliq-hero-content' },
+              h('div', { className: 'cliq-hero-tag' }, heroSlides[heroSlide].tag),
+              h('h1', { className: 'cliq-hero-title' }, heroSlides[heroSlide].title),
+              h('p', { className: 'cliq-hero-subtitle' }, heroSlides[heroSlide].subtitle),
+              h('button', {
+                className: 'cliq-hero-btn',
+                onClick: () => {
+                  const el = document.getElementById('shop-drop-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, heroSlides[heroSlide].btnText)
+            ),
+
+            // Navigation Arrows
+            h('button', {
+              className: 'cliq-hero-arrow prev',
+              title: 'Previous Slide',
+              onClick: () => setHeroSlide((heroSlide - 1 + heroSlides.length) % heroSlides.length)
+            }, '‹'),
+            h('button', {
+              className: 'cliq-hero-arrow next',
+              title: 'Next Slide',
+              onClick: () => setHeroSlide((heroSlide + 1) % heroSlides.length)
+            }, '›'),
+
+            // Carousel Dots
+            h('div', { className: 'cliq-hero-dots' },
+              heroSlides.map((_, idx) =>
+                h('div', {
+                  key: idx,
+                  className: `cliq-hero-dot ${idx === heroSlide ? 'active' : ''}`,
+                  onClick: () => setHeroSlide(idx)
+                })
+              )
+            )
+          ),
+
+          // Right Preview Card
+          h('div', { className: 'cliq-hero-preview-right' },
+            h('img', {
+              src: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&auto=format&fit=crop&q=80',
+              alt: 'Fashion Preview'
+            })
+          )
+        )
       ),
 
-      // Search Bar
-      h('form', { onSubmit: handleSearchSubmit, style: { display: 'flex', gap: 12, marginBottom: 28 } },
+      // Section Header: "Shop Drop" like attached screenshot
+      h('div', { id: 'shop-drop-section', className: 'cliq-section-header' },
+        h('h2', { className: 'cliq-section-title' }, 'Shop Drop'),
+        h('p', { className: 'cliq-section-sub' }, 'Curated High-Performance Gear & Tech Essentials')
+      ),
+
+      // Catalog Search / Filter Sub-bar
+      h('form', { onSubmit: handleSearchSubmit, style: { display: 'flex', gap: 12, marginBottom: 28, maxWidth: 540, margin: '0 auto 28px auto' } },
         h('input', {
           type: 'text',
           className: 'filter-input',
-          placeholder: 'Search products by title (e.g. Earbuds, Mouse, Keyboard)...',
+          placeholder: 'Filter collection (e.g. Earbuds, Mouse, Keyboard)...',
           value: searchQuery,
           onChange: (e) => setSearchQuery(e.target.value),
-          style: { padding: '12px 16px', fontSize: '1rem', borderRadius: 10 }
+          style: { padding: '10px 16px', fontSize: '0.9rem', borderRadius: 6 }
         }),
-        h('button', { type: 'submit', className: 'btn btn-primary', style: { padding: '12px 24px' } }, 'Search')
+        h('button', { type: 'submit', className: 'btn btn-primary', style: { padding: '10px 20px', borderRadius: 6 } }, 'Search')
       ),
 
       // Main Grid Layout
@@ -906,8 +1067,12 @@ function App() {
         // Sidebar Filters
         h('aside', null,
           h('div', { className: 'filter-card' },
-            h('h3', { className: 'filter-title' }, 'Filter Products'),
+            h('div', { className: 'filter-header-row' },
+              h('h3', { className: 'filter-title' }, 'Filters'),
+              h('span', { style: { fontSize: '0.75rem', color: '#888', fontWeight: 600 } }, `${filteredProducts.length} items`)
+            ),
             h('div', { className: 'filter-group' },
+              h('label', { className: 'filter-label' }, 'Categories'),
               // Subtle QA Defect: Typo 'Accesssories' (3 s's) causes 0 products to match
               ['Audio', 'Accesssories', 'Wearables', 'Video', 'Charging'].map(cat =>
                 h('label', { key: cat, className: 'checkbox-item' },
@@ -951,22 +1116,33 @@ function App() {
                   ) : p.stock > 0 ? (
                     h('span', { className: 'stock-tag-ok' }, `In Stock (${p.stock} left)`)
                   ) : (
-                    h('span', { style: { position: 'absolute', top: 10, right: 10, background: '#fee2e2', color: '#991b1b', padding: '3px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600 } }, 'Out of Stock')
+                    h('span', { style: { position: 'absolute', top: 12, right: 12, background: '#fee2e2', color: '#991b1b', padding: '3px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 } }, 'Out of Stock')
                   ),
                   // BUG-014: Product #6 has broken image
                   h('img', { src: p.image, alt: p.name, className: 'product-img' })
                 ),
 
                 h('div', { className: 'product-body' },
+                  h('div', { className: 'product-brand-tag' }, `PULSE • ${p.category.toUpperCase()}`),
                   h('div', { className: 'product-name', onClick: () => setActiveProduct(p) }, p.name),
                   h('p', { className: 'product-desc' }, p.description),
-                  h('div', { style: { fontSize: '0.8rem', color: '#f59e0b', marginBottom: 8 } },
-                    `★ ${p.rating} `,
-                    h('span', { style: { color: '#94a3b8' } }, `(${p.reviewsCount} reviews)`)
+                  h('div', { className: 'product-rating-row' },
+                    h('span', { className: 'rating-badge' },
+                      h('span', { className: 'rating-star' }, '★'),
+                      h('span', null, p.rating)
+                    ),
+                    h('span', { className: 'rating-count' }, `(${p.reviewsCount} reviews)`)
                   ),
                   h('div', { className: 'product-footer' },
-                    h('span', { className: 'product-price' }, `$${p.price.toFixed(2)}`),
-                    h('button', { className: 'btn btn-primary btn-sm', onClick: () => handleAddToCart(p) }, '+ Add to Cart')
+                    h('div', { className: 'price-container' },
+                      h('span', { className: 'product-price' }, `$${p.price.toFixed(2)}`),
+                      h('span', { className: 'product-mrp-price' }, `$${(p.price * 1.25).toFixed(2)}`),
+                      h('span', { className: 'product-discount-tag' }, '20% off')
+                    ),
+                    h('button', {
+                      className: 'btn-add-bag',
+                      onClick: () => handleAddToCart(p)
+                    }, '+ Add to Bag')
                   )
                 )
               )
